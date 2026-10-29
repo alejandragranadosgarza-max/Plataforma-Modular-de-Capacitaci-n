@@ -1,7 +1,7 @@
 {
   "name": "Entrenador de Capacitación Tester",
   "short_name": "Capacitación App",
-  "start_url": "entrenador_tester.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#6b21a8",
