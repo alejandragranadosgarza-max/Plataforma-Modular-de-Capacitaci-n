@@ -36,6 +36,7 @@
             <button type="button" class="btn" onclick="switchCapSubModule('sub-testing')">🧪 Testing (ISTQB v4.0)</button>
             <button type="button" class="btn btn-accent" onclick="switchCapSubModule('sub-ba')">📊 Business Analysis (BABOK v3)</button>
             <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="switchCapSubModule('sub-tech')">⚙️ Cuestionario de Conceptos Técnicos</button>
+            <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="switchCapSubModule('sub-scrum')">📋 Cuestionario SCRUM (Guía Oficial)</button> <!-- 👈 Nuevo botón -->
         </div>
 
         <!-- Submódulo Testing -->
@@ -165,6 +166,43 @@
                 </div>
 
                 <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="startTechQuizFromSetup()">Iniciar Cuestionario Técnico</button>
+            </div>
+        </div>
+
+        <!-- Submódulo Scrum -->
+        <div id="sub-scrum" class="cap-submodule" style="display:none;">
+            <div id="scrum-quiz-setup" class="card">
+                <h3>Selecciona los roles o áreas para tu cuestionario de Scrum</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'scrum')">Marcar Todos</button>
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'scrum')">Desmarcar Todos</button>
+                   <span id="scrum-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
+                </div>
+                
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-1" class="scrum-chap-cb" value="1" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 1:</b> Dueño de Producto (PO) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-2" class="scrum-chap-cb" value="2" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 2:</b> Equipo de Desarrollo <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-3" class="scrum-chap-cb" value="3" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 3:</b> Scrum Master <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-4" class="scrum-chap-cb" value="4" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 4:</b> Eventos y Artefactos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-4">(...) </small></span>
+                    </label>
+                </div>
+
+                <div id="scrum-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos un área para iniciar.
+                </div>
+
+                <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="startScrumQuizFromSetup()">Iniciar Cuestionario Scrum</button>
             </div>
         </div>
 
