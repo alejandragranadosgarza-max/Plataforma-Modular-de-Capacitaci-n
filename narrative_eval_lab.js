@@ -218,89 +218,59 @@ function removeNarrativeForm(narrativeId) {
 
 // VALIDACIÓN ESTRICTA
 function validateAllNarratives() {
-    var project = document.getElementById('nar-project').value.trim();
     var cards = document.querySelectorAll('.narrative-set');
-    var outBox = document.getElementById('nar-output');
-
-    if (!project) {
-        alert("Por favor ingresa el Nombre del Proyecto.");
-        return;
-    }
+    var outputDiv = document.getElementById('nar-output');
+    
     if (cards.length === 0) {
-        alert("Debes agregar al menos un Requerimiento Funcional para validar.");
+        alert("⚠️ No hay requerimientos funcionales agregados para validar.");
         return;
     }
 
-    var validationLog = "";
-    var ambiguousWords = [
-        "rápido", "rapido", "correctamente", "fácil", "facil", "intuitivo", "bien", 
-        "óptimo", "optimizado", "seguro", "adecuado", "eficiente", "amigable",
-        "lo que sea necesario", "lo requerido", "como se necesite", "según sea el caso",
-        "a criterio", "normal", "estándar", "flexible", "varios", "entre otros"
-    ];
+    var htmlReport = "<h3>📊 Informe de Validación Estática y Calidad de Narrativas (SRS)</h3>";
+    var hayErroresTotales = false;
 
     cards.forEach((card, index) => {
-        var num = index + 1;
-        var objVal = card.querySelector('.nar-obj-select').value.trim();
-        var reqNum = card.querySelector('.nar-num').value.trim();
-        var reqName = card.querySelector('.nar-req-name').value.trim();
-        var narr = card.querySelector('.nar-text').value.trim();
-        var inputs = card.querySelector('.nar-in').value.trim();
-        var outputs = card.querySelector('.nar-out').value.trim();
-        var rules = card.querySelector('.nar-rules').value.trim();
-        var criteria = card.querySelector('.nar-crit').value.trim();
+        var reqNum = card.querySelector('.nar-num').value || `REQ-0${index + 1}`;
+        var reqName = card.querySelector('.nar-req-name').value || 'Sin Nombre';
+        var narrText = card.querySelector('.nar-text').value;
+        var rulesText = card.querySelector('.nar-rules').value;
+        var critText = card.querySelector('.nar-crit').value;
+        var inText = card.querySelector('.nar-in').value;
+        var outText = card.querySelector('.nar-out').value;
 
-        var specificErrors = [];
+        // Ejecutar validaciones estructurales y de ambigüedad
+        var alertasCalidad = validarAmbiguedadesYCalidad(narrText, rulesText, critText);
+        
+        // Validar campos vacíos obligatorios
+        var camposVacios = [];
+        if (!narrText.trim()) camposVacios.push("Narrativa");
+        if (!inText.trim()) camposVacios.push("Entradas");
+        if (!outText.trim()) camposVacios.push("Salidas");
+        if (!critText.trim()) camposVacios.push("Criterios de Aceptación");
 
-        if (!objVal) specificErrors.push("Falta seleccionar la <b>Clave de Objetivo Comercial</b>.");
-        if (!reqNum) specificErrors.push("Falta definir el <b>Número de Requerimiento</b>.");
-        if (!reqName) specificErrors.push("Falta definir el <b>Nombre de Requerimiento</b>.");
-        if (!narr || narr.length < 10) specificErrors.push("La <b>Narrativa</b> está vacía o es demasiado corta (mínimo 10 caracteres).");
-        if (!inputs) specificErrors.push("Falta especificar las <b>Entradas (I/O)</b>.");
-        if (!outputs) specificErrors.push("Falta especificar las <b>Salidas (I/O)</b>.");
-        if (!rules) specificErrors.push("Falta definir las <b>Reglas (Negocio/Seguridad/NFR)</b>.");
-        if (!criteria || criteria.length < 10) specificErrors.push("Los <b>Criterios de Aceptación</b> están vacíos o son insuficientes (mínimo 10 caracteres).");
+        htmlReport += `<div style="border-left: 4px solid #6b21a8; padding: 10px; margin-bottom: 15px; background: #faf5ff;">`;
+        htmlReport += `<h4>${reqNum}: ${escapeHTML(reqName)}</h4>`;
 
-        var fieldsToVerify = [
-            { name: "en la Narrativa", text: narr },
-            { name: "en las Entradas", text: inputs },
-            { name: "en las Salidas", text: outputs },
-            { name: "en las Reglas", text: rules },
-            { name: "en los Criterios de Aceptación", text: criteria }
-        ];
-
-        fieldsToVerify.forEach(field => {
-            var lowerFieldText = field.text.toLowerCase();
-            var foundInField = [];
-            ambiguousWords.forEach(word => {
-                if (lowerFieldText.indexOf(word) !== -1) {
-                    foundInField.push(word);
-                }
-            });
-            if (foundInField.length > 0) {
-                specificErrors.push(`Ambigüedad o frase vaga detectada <b>${field.name}</b> (términos no permitidos: <em>${foundInField.join(", ")}</em>).`);
-            }
-        });
-
-        if (specificErrors.length > 0) {
-            validationLog += `<div style="margin-bottom: 10px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 6px; border-left: 5px solid #dc3545;">
-                <strong>❌ Requerimiento #${num} (${reqNum || 'Sin ID'} - ${reqName || 'Sin Nombre'}): NO CUMPLE</strong>
-                <ul style="margin: 5px 0 0 20px; padding: 0;">` + specificErrors.map(e => `<li>${e}</li>`).join('') + `</ul>
-            </div>`;
-        } else {
-            validationLog += `<div style="margin-bottom: 10px; color: #155724; background: #d4edda; padding: 10px; border-radius: 6px; border-left: 5px solid #28a745;">
-                <strong>✅ Requerimiento #${num} (${reqNum} - ${reqName}): NARRATIVA ROBUSTA</strong><br><small>Objetivo Comercial: ${escapeHTML(objVal)} | Sin ambigüedades.</small>
-            </div>`;
+        if (camposVacios.length > 0) {
+            hayErroresTotales = true;
+            htmlReport += `<p style="color: #dc3545;">❌ <b>Campos obligatorios vacíos:</b> ${camposVacios.join(', ')}</p>`;
         }
+
+        if (alertasCalidad.length > 0) {
+            htmlReport += `<ul style="margin: 5px 0 0 20px; color: #b45309;">`;
+            alertasCalidad.forEach(alerta => {
+                htmlReport += `<li>${alerta}</li>`;
+            });
+            htmlReport += `</ul>`;
+        } else if (camposVacios.length === 0) {
+            htmlReport += `<p style="color: #155724;">✅ <b>Sin ambigüedades detectadas:</b> El requerimiento cumple con los criterios de especificación formal.</p>`;
+        }
+
+        htmlReport += `</div>`;
     });
 
-    outBox.style.display = 'block';
-    outBox.innerHTML = `
-        <h4 style="color:#005691; margin-top:0;">🔍 Reporte Detallado de Evaluación de Narrativas (Cascada)</h4>
-        <p><strong>Proyecto:</strong> ${escapeHTML(project)} | <strong>Total Requerimientos Evaluados:</strong> ${cards.length}</p>
-        <hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
-        ${validationLog}
-    `;
+    outputDiv.innerHTML = htmlReport;
+    outputDiv.style.display = 'block';
 }
 
 // --- EXPORTAR PROYECTO A JSON ---
