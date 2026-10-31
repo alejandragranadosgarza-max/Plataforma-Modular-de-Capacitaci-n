@@ -339,7 +339,7 @@
         } else if(subId === 'sub-tech') {
             updateSelectionCounter('tech');
         } else if(subId === 'sub-scrum') {
-            updateSelectionCounter('scrum'); // 👈 Asegurar esta línea
+            updateSelectionCounter('scrum');
         }
         updateAllChapterCounts();
     }
@@ -357,19 +357,6 @@
             if (el) el.innerText = "(" + tCounts[c] + " preguntas)";
         }
 
-       var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
-        var scrumCounts = {1:0, 2:0, 3:0, 4:0};
-        for (var i = 0; i < scrumPool.length; i++) {
-            var q = scrumPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (scrumCounts[ch] !== undefined) scrumCounts[ch]++;
-        }
-        for (var c = 1; c <= 4; c++) {
-            var el = document.getElementById('count-scrum-chap-' + c);
-            if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
-        }
-
-        // BLOQUE NUEVO A AÑADIR PARA SCRUM:
         var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
         var scrumCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < scrumPool.length; i++) {
@@ -381,6 +368,53 @@
             var el = document.getElementById('count-scrum-chap-' + c);
             if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
         }
+    }
+
+    // 👈 AQUÍ DEBES AGREGAR LA NUEVA FUNCIÓN QUE COMPARTISTE:
+    function startScrumQuizFromSetup() {
+        var checkboxes = document.querySelectorAll('.scrum-chap-cb:checked');
+        var errorDiv = document.getElementById('scrum-setup-error');
+        
+        if (checkboxes.length === 0) {
+            if (errorDiv) errorDiv.style.display = 'block';
+            return;
+        }
+        if (errorDiv) errorDiv.style.display = 'none';
+
+        var selectedChapters = [];
+        checkboxes.forEach(function(cb) {
+            selectedChapters.push(parseInt(cb.value, 10));
+        });
+
+        var pool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
+        currentQuizPool = pool.filter(function(q) {
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            return selectedChapters.includes(ch);
+        });
+
+        if (currentQuizPool.length === 0) {
+            alert("⚠️ No hay preguntas disponibles para las áreas seleccionadas.");
+            return;
+        }
+
+        currentQuizPool.sort(() => Math.random() - 0.5);
+        currentQuestionIndex = 0;
+        
+        stats1st = 0;
+        stats2nd = 0;
+        statsMore = 0;
+        statsWrong = currentQuizPool.length;
+
+        var setupDiv = document.getElementById('scrum-quiz-setup');
+        if (setupDiv) setupDiv.style.display = 'none';
+        
+        var activeDiv = document.getElementById('quiz-active');
+        if (activeDiv) activeDiv.style.display = 'block';
+
+        var roundIndicator = document.getElementById('round-indicator');
+        if (roundIndicator) roundIndicator.innerText = "Cuestionario Scrum (Guía Oficial)";
+
+        loadQuestion();
     }
 </script>
 <script>
