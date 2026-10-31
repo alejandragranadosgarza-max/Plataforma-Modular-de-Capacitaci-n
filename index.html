@@ -357,31 +357,19 @@
             if (el) el.innerText = "(" + tCounts[c] + " preguntas)";
         }
 
-        var bPool = (typeof baQuestions !== 'undefined') ? baQuestions : [];
-        var bCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-        for (var i = 0; i < bPool.length; i++) {
-            var q = bPool[i];
+       var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
+        var scrumCounts = {1:0, 2:0, 3:0, 4:0};
+        for (var i = 0; i < scrumPool.length; i++) {
+            var q = scrumPool[i];
             var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (bCounts[ch] !== undefined) bCounts[ch]++;
-        }
-        for (var c = 1; c <= 6; c++) {
-            var el = document.getElementById('count-ba-chap-' + c);
-            if (el) el.innerText = "(" + bCounts[c] + " preguntas)";
-        }
-
-        var techPool = (typeof techQuestions !== 'undefined') ? techQuestions : [];
-        var techCounts = {1:0, 2:0, 3:0, 4:0};
-        for (var i = 0; i < techPool.length; i++) {
-            var q = techPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (techCounts[ch] !== undefined) techCounts[ch]++;
+            if (scrumCounts[ch] !== undefined) scrumCounts[ch]++;
         }
         for (var c = 1; c <= 4; c++) {
-            var el = document.getElementById('count-tech-' + c);
-            if (el) el.innerText = "(" + techCounts[c] + " preguntas)";
+            var el = document.getElementById('count-scrum-chap-' + c);
+            if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
         }
 
-        // 👈 BLOQUE NUEVO A AÑADIR PARA SCRUM:
+        // BLOQUE NUEVO A AÑADIR PARA SCRUM:
         var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
         var scrumCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < scrumPool.length; i++) {
