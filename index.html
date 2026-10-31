@@ -332,14 +332,14 @@
         if(act) act.style.display = 'none';
         if(sum) sum.style.display = 'none';
         
-        if(subId === 'sub-testing') {
+       if(subId === 'sub-testing') {
             updateSelectionCounter('testing');
         } else if(subId === 'sub-ba') {
             updateSelectionCounter('ba');
         } else if(subId === 'sub-tech') {
             updateSelectionCounter('tech');
         } else if(subId === 'sub-scrum') {
-            updateSelectionCounter('scrum');
+            updateSelectionCounter('scrum'); // 👈 Asegurar esta línea
         }
         updateAllChapterCounts();
     }
@@ -380,12 +380,20 @@
             var el = document.getElementById('count-tech-' + c);
             if (el) el.innerText = "(" + techCounts[c] + " preguntas)";
         }
-    }
 
-    window.onload = function() {
-        switchCapSubModule('sub-testing');
-        updateAllChapterCounts();
-    };
+        // 👈 BLOQUE NUEVO A AÑADIR PARA SCRUM:
+        var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
+        var scrumCounts = {1:0, 2:0, 3:0, 4:0};
+        for (var i = 0; i < scrumPool.length; i++) {
+            var q = scrumPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (scrumCounts[ch] !== undefined) scrumCounts[ch]++;
+        }
+        for (var c = 1; c <= 4; c++) {
+            var el = document.getElementById('count-scrum-chap-' + c);
+            if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
+        }
+    }
 </script>
 <script>
   if ('serviceWorker' in navigator) {
