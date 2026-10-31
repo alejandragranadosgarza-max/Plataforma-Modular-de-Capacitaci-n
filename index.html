@@ -88,14 +88,14 @@
             </div>
         </div>
 
-        <!-- Submódulo Business Analysis -->
+       <!-- Submódulo Business Analysis -->
         <div id="sub-ba" class="cap-submodule" style="display:none;">
             <div id="ba-quiz-setup" class="card">
                 <h3>Selecciona los capítulos para tu cuestionario (BABOK v3)</h3>
                 <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'testing')">Marcar Todos</button>
-                  <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'testing')">Desmarcar Todos</button>
-                  <span id="testing-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
+                  <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'ba')">Marcar Todos</button>
+                  <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'ba')">Desmarcar Todos</button>
+                  <span id="ba-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
                 </div>
                 
                 <div class="chapter-grid">
@@ -138,9 +138,9 @@
             <div id="tech-quiz-setup" class="card">
                 <h3>Selecciona las categorías técnicas a evaluar</h3>
                 <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                    <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'testing')">Marcar Todos</button>
-                    <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'testing')">Desmarcar Todos</button>
-                    <span id="testing-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionados</span>
+                    <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'tech')">Marcar Todos</button>
+                    <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'tech')">Desmarcar Todos</button>
+                    <span id="tech-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
                 </div>
                 <div class="chapter-grid">
                     <label class="chapter-card unchecked">
@@ -169,7 +169,7 @@
             </div>
         </div>
 
-        <!-- Submódulo Scrum -->
+       <!-- Submódulo Scrum -->
         <div id="sub-scrum" class="cap-submodule" style="display:none;">
             <div id="scrum-quiz-setup" class="card">
                 <h3>Selecciona los roles o áreas para tu cuestionario de Scrum</h3>
@@ -178,7 +178,7 @@
                    <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'scrum')">Desmarcar Todos</button>
                    <span id="scrum-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
                 </div>
-                
+
                 <div class="chapter-grid">
                     <label class="chapter-card unchecked">
                         <input type="checkbox" id="scrum-chap-1" class="scrum-chap-cb" value="1" onchange="updateSelectionCounter('scrum')"> 
@@ -303,6 +303,7 @@
 <script src="app.js"></script>
 <script src="atdd_lab.js"></script>
 <script src="narrative_eval_lab.js"></script>
+
 <script>
     function switchMainTab(tabId, btn) {
         if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && localStorage.getItem("admin_auth") !== "true") {
@@ -337,6 +338,8 @@
             updateSelectionCounter('ba');
         } else if(subId === 'sub-tech') {
             updateSelectionCounter('tech');
+        } else if(subId === 'sub-scrum') {
+            updateSelectionCounter('scrum');
         }
         updateAllChapterCounts();
     }
