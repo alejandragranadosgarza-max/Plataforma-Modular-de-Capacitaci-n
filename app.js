@@ -7,7 +7,7 @@ var currentQuestion = null;
 var questionStats = {};
 var roundNumber = 1;
 var wrongQueue = [];
-var activeQuizType = 'testing'; // 'testing', 'ba', 'tech'
+var activeQuizType = 'testing'; // 'testing', 'ba', 'tech', 'scrum'
 var answeredCurrent = false;
 
 // --- CONTROL DE SELECCIÓN GENERAL (GENÉRICO) ---
@@ -113,6 +113,28 @@ function startTechQuizFromSetup() {
     runQuizPool(pool, selectedChapters);
 }
 
+// 4. MÓDULO SCRUM (GUÍA OFICIAL) 👈 NUEVA FUNCIÓN AÑADIDA
+function startScrumQuizFromSetup() {
+    activeQuizType = 'scrum';
+    var cbs = document.querySelectorAll('.scrum-chap-cb');
+    var selectedChapters = [];
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) {
+            selectedChapters.push(parseInt(cbs[i].value, 10));
+        }
+    }
+    
+    var errBox = document.getElementById('scrum-setup-error');
+    if (selectedChapters.length === 0) {
+        if (errBox) errBox.style.display = 'block';
+        return;
+    }
+    if (errBox) errBox.style.display = 'none';
+
+    var pool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
+    runQuizPool(pool, selectedChapters);
+}
+
 // --- FILTRADO Y EJECUCIÓN CENTRALIZADA ---
 function runQuizPool(pool, selectedChapters) {
     var tempPool = [];
@@ -151,7 +173,6 @@ function initQuizSession() {
     roundNumber = 1;
     currentIndex = 0;
     
-    // Ocultar todas las configuraciones y mostrar zona activa
     var setups = document.querySelectorAll('.cap-submodule');
     for (var i = 0; i < setups.length; i++) {
         setups[i].style.display = 'none';
@@ -170,7 +191,6 @@ function returnToSetup() {
     document.getElementById('quiz-active').style.display = 'none';
     document.getElementById('quiz-summary').style.display = 'none';
     
-    // Mostrar la sub-sección activa correspondiente
     if (activeQuizType === 'testing') {
         document.getElementById('sub-testing').style.display = 'block';
         updateSelectionCounter('testing');
@@ -180,6 +200,9 @@ function returnToSetup() {
     } else if (activeQuizType === 'tech') {
         document.getElementById('sub-tech').style.display = 'block';
         updateSelectionCounter('tech');
+    } else if (activeQuizType === 'scrum') {
+        document.getElementById('sub-scrum').style.display = 'block';
+        updateSelectionCounter('scrum');
     }
 }
 
@@ -220,12 +243,19 @@ function renderCurrentQuestion() {
     fb.innerHTML = '';
     btnNext.style.display = 'none';
 
-    var html = '<span class="badge-cap">' + currentQuestion.chapterTitle + '</span>';
-    html += '<h3 style="margin-top:10px;">' + currentQuestion.q + '</h3>';
+    // Compatibilidad para títulos y textos (Testing/BA/Tech vs Scrum)
+    var chapTitle = currentQuestion.chapterTitle || ("Scrum - Área / Rol " + currentQuestion.chapter);
+    var qText = currentQuestion.q || currentQuestion.question || currentQuestion.pregunta || "";
+    var rawOptions = currentQuestion.options || currentQuestion.opciones || [];
+    var explanationText = currentQuestion.explanation || currentQuestion.explicacion || "";
+    var correctIdx = (currentQuestion.correct !== undefined) ? currentQuestion.correct : (currentQuestion.answer !== undefined ? currentQuestion.answer : currentQuestion.correcta);
+
+    var html = '<span class="badge-cap">' + chapTitle + '</span>';
+    html += '<h3 style="margin-top:10px;">' + qText + '</h3>';
 
     var indexedOptions = [];
-    for (var i = 0; i < currentQuestion.options.length; i++) {
-        indexedOptions.push({ text: currentQuestion.options[i], originalIndex: i });
+    for (var i = 0; i < rawOptions.length; i++) {
+        indexedOptions.push({ text: rawOptions[i], originalIndex: i });
     }
     for (var i = indexedOptions.length - 1; i > 0; i--) {
         var r = Math.floor(Math.random() * (i + 1));
@@ -235,13 +265,17 @@ function renderCurrentQuestion() {
     }
 
     currentQuestion._currentShuffledOptions = indexedOptions;
+    currentQuestion._resolvedCorrectIndex = correctIdx;
+    currentQuestion._resolvedExplanation = explanationText;
 
     for (var j = 0; j < indexedOptions.length; j++) {
         html += '<button type="button" class="option" onclick="checkAnswer(' + j + ')" id="opt-' + j + '">' + indexedOptions[j].text + '</button>';
     }
 
     box.innerHTML = html;
-    document.getElementById('round-indicator').innerText = "Ronda " + roundNumber + " - Pregunta " + (currentIndex + 1) + " de " + activeQueue.length;
+    
+    var indicatorText = (activeQuizType === 'scrum') ? "Cuestionario Scrum (Guía Oficial)" : ("Ronda " + roundNumber);
+    document.getElementById('round-indicator').innerText = indicatorText + " - Pregunta " + (currentIndex + 1) + " de " + activeQueue.length;
 }
 
 function checkAnswer(shuffledIdx) {
@@ -251,7 +285,7 @@ function checkAnswer(shuffledIdx) {
     qSt.attempts++;
 
     var chosen = currentQuestion._currentShuffledOptions[shuffledIdx];
-    var isCorrect = (chosen.originalIndex === currentQuestion.correct);
+    var isCorrect = (chosen.originalIndex === currentQuestion._resolvedCorrectIndex);
 
     var fb = document.getElementById('quiz-feedback');
     fb.style.display = 'block';
@@ -268,7 +302,7 @@ function checkAnswer(shuffledIdx) {
             allOpts[i].disabled = true;
             allOpts[i].style.cursor = 'not-allowed';
             var optObj = currentQuestion._currentShuffledOptions[i];
-            if (optObj.originalIndex === currentQuestion.correct) {
+            if (optObj.originalIndex === currentQuestion._resolvedCorrectIndex) {
                 allOpts[i].style.opacity = '1';
                 allOpts[i].style.background = '#d4edda';
                 allOpts[i].style.borderColor = '#28a745';
@@ -281,7 +315,7 @@ function checkAnswer(shuffledIdx) {
 
         fb.style.background = '#d4edda';
         fb.style.color = '#155724';
-        fb.innerHTML = '<strong>✅ ¡Correcto!</strong> ' + currentQuestion.explanation;
+        fb.innerHTML = '<strong>✅ ¡Correcto!</strong> ' + currentQuestion._resolvedExplanation;
         document.getElementById('btn-next').style.display = 'inline-block';
     } else {
         var btnChosen = document.getElementById('opt-' + shuffledIdx);
@@ -293,9 +327,12 @@ function checkAnswer(shuffledIdx) {
             btnChosen.style.cursor = 'not-allowed';
         }
 
+        var refText = currentQuestion.pageRef || "Guía de Scrum Oficial";
+        var sumText = currentQuestion.summary ? currentQuestion.summary.join(' ') : currentQuestion._resolvedExplanation;
+
         fb.style.background = '#f8d7da';
         fb.style.color = '#721c24';
-        fb.innerHTML = '<strong>❌ Incorrecto (Intento #' + qSt.attempts + ').</strong> Puedes intentar con otra opción o avanzar.<div class="study-box"><b>Referencia:</b> ' + currentQuestion.pageRef + '<br><b>Resumen:</b> ' + currentQuestion.summary.join(' ') + '</div>';
+        fb.innerHTML = '<strong>❌ Incorrecto (Intento #' + qSt.attempts + ').</strong> Puedes intentar con otra opción o avanzar.<div class="study-box"><b>Referencia:</b> ' + refText + '<br><b>Resumen:</b> ' + sumText + '</div>';
         
         document.getElementById('btn-next').style.display = 'inline-block';
     }
@@ -342,8 +379,6 @@ function showRoundSummary() {
     }
 }
 
-// --- (Funciones anteriores de tu app.js se mantienen intactas hasta aquí) ---
-
 function startRetryWrongRound() {
     if (wrongQueue.length === 0) return;
     activeQueue = wrongQueue;
@@ -359,14 +394,12 @@ function startRetryWrongRound() {
             questionStats[activeQueue[k].id].solved = false;
         }
     }
-   
     refreshScoreboard();
     renderCurrentQuestion();
-} // <--- AQUÍ CIERRA CORRECTAMENTE startRetryWrongRound()
-
+}
 
 // ==========================================
-// CONTROL DE ACCESO ADMIN (AHORA SÍ EN EL NIVEL GLOBAL)
+// CONTROL DE ACCESO ADMIN
 // ==========================================
 function verificarAccesoAdmin(event) {
     if (event) {
@@ -374,12 +407,9 @@ function verificarAccesoAdmin(event) {
     }
     
     var password = prompt("Ingresa la contraseña de administrador:");
-    
-    // AQUÍ ESCRIBES DIRECTAMENTE TU CONTRASEÑA ENTRE COMILLAS
     var passwordReal = "HolaAGG"; 
     
     if (password === passwordReal) {
-        // En lugar de localStorage:
         sessionStorage.setItem("admin_auth", "true");
         aplicarSeguridadModulos();
         alert("¡Acceso concedido! Módulos 2 y 3 desbloqueados.");
@@ -387,6 +417,7 @@ function verificarAccesoAdmin(event) {
         alert("Contraseña incorrecta.");
     }
 }
+
 function aplicarSeguridadModulos() {
     var esAdmin = sessionStorage.getItem("admin_auth");
     if (esAdmin === "true") {
@@ -397,6 +428,9 @@ function aplicarSeguridadModulos() {
     }
 }
 
+window.addEventListener('DOMContentLoaded', (event) => {
+    aplicarSeguridadModulos();
+});
 // Ejecutar al cargar la página para recordar la sesión activa
 window.addEventListener('DOMContentLoaded', (event) => {
     aplicarSeguridadModulos();
