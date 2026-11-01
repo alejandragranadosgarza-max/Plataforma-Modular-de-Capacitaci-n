@@ -137,26 +137,25 @@ function startScrumQuizFromSetup() {
 
 // 5. MÓDULO UX/UI
 function startUxQuizFromSetup() {
-    activeQuizType = 'ux';
-    var cbs = document.querySelectorAll('.ux-chap-cb');
-    var selectedChapters = [];
-    for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) {
-            selectedChapters.push(parseInt(cbs[i].value, 10));
+        activeQuizType = 'ux';
+        var cbs = document.querySelectorAll('.ux-chap-cb');
+        var selectedChapters = [];
+        for (var i = 0; i < cbs.length; i++) {
+            if (cbs[i].checked) {
+                selectedChapters.push(parseInt(cbs[i].value, 10));
+            }
         }
-    }
-    
-    var errBox = document.getElementById('ux-setup-error');
-    if (selectedChapters.length === 0) {
-        if (errBox) errBox.style.display = 'block';
-        return;
-    }
-    if (errBox) errBox.style.display = 'none';
+        
+        var errBox = document.getElementById('ux-setup-error');
+        if (selectedChapters.length === 0) {
+            if (errBox) errBox.style.display = 'block';
+            return;
+        }
+        if (errBox) errBox.style.display = 'none';
 
-    var pool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
-    runQuizPool(pool, selectedChapters);
-}
-
+        var pool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
+        runQuizPool(pool, selectedChapters);
+    }
 // --- FILTRADO Y EJECUCIÓN CENTRALIZADA ---
 function runQuizPool(pool, selectedChapters) {
     var tempPool = [];
