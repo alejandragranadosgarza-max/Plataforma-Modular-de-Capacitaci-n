@@ -437,7 +437,7 @@
             var el = document.getElementById('count-scrum-chap-' + c);
             if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
         }
-        // Conteo para UX
+       // Conteo para UX
         var uxPool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
         var uxCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < uxPool.length; i++) {
@@ -450,6 +450,9 @@
             if (el) el.innerText = "(" + uxCounts[c] + " preguntas)";
         }
     }
+
+    // Ejecutar conteo inicial al terminar de cargar los scripts
+    window.addEventListener('DOMContentLoaded', updateAllChapterCounts);
 </script>
 <script>
   if ('serviceWorker' in navigator) {
