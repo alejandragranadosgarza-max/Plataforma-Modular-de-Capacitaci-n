@@ -36,7 +36,8 @@
             <button type="button" class="btn" onclick="switchCapSubModule('sub-testing')">🧪 Testing (ISTQB v4.0)</button>
             <button type="button" class="btn btn-accent" onclick="switchCapSubModule('sub-ba')">📊 Business Analysis (BABOK v3)</button>
             <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="switchCapSubModule('sub-tech')">⚙️ Cuestionario de Conceptos Técnicos</button>
-            <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="switchCapSubModule('sub-scrum')">📋 Cuestionario SCRUM (Guía Oficial)</button> <!-- 👈 Nuevo botón -->
+            <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="switchCapSubModule('sub-scrum')">📋 Cuestionario SCRUM (Guía Oficial)</button>
+            <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="switchCapSubModule('sub-ux')">🎨 Diseño UX/UI</button> <!-- 👈 Nuevo botón UX -->
         </div>
 
         <!-- Submódulo Testing -->
@@ -206,6 +207,43 @@
             </div>
         </div>
 
+<!-- Submódulo UX -->
+        <div id="sub-ux" class="cap-submodule" style="display:none;">
+            <div id="ux-quiz-setup" class="card">
+                <h3>Selecciona los capítulos o áreas para tu cuestionario de UX/UI</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'ux')">Marcar Todos</button>
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'ux')">Desmarcar Todos</button>
+                   <span id="ux-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 capítulos seleccionados</span>
+                </div>
+
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-1" class="ux-chap-cb" value="1" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 1:</b> UX & Research <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-2" class="ux-chap-cb" value="2" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 2:</b> Arquitectura e Interacción <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-3" class="ux-chap-cb" value="3" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 3:</b> Prototipado y UI <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-4" class="ux-chap-cb" value="4" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 4:</b> Pruebas de Usabilidad y Métricas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-4">(...) </small></span>
+                    </label>
+                </div>
+
+                <div id="ux-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
+                </div>
+
+                <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="startUxQuizFromSetup()">Iniciar Cuestionario UX</button>
+            </div>
+        </div>
+
         <!-- ZONA ACTIVA DE CUESTIONARIOS -->
         <div id="quiz-active" style="display:none; margin-top: 15px;">
             <div class="scoreboard">
@@ -300,6 +338,7 @@
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
 <script src="questions_scrum.js"></script>
+<script src="questions_ux.js"></script>
 <script src="app.js"></script>
 <script src="atdd_lab.js"></script>
 <script src="narrative_eval_lab.js"></script>
@@ -332,7 +371,7 @@
         if(act) act.style.display = 'none';
         if(sum) sum.style.display = 'none';
         
-       if(subId === 'sub-testing') {
+        if(subId === 'sub-testing') {
             updateSelectionCounter('testing');
         } else if(subId === 'sub-ba') {
             updateSelectionCounter('ba');
@@ -340,6 +379,8 @@
             updateSelectionCounter('tech');
         } else if(subId === 'sub-scrum') {
             updateSelectionCounter('scrum');
+        } else if(subId === 'sub-ux') {
+            updateSelectionCounter('ux');
         }
         updateAllChapterCounts();
     }
@@ -395,6 +436,18 @@
         for (var c = 1; c <= 4; c++) {
             var el = document.getElementById('count-scrum-chap-' + c);
             if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
+        }
+        // Conteo para UX
+        var uxPool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
+        var uxCounts = {1:0, 2:0, 3:0, 4:0};
+        for (var i = 0; i < uxPool.length; i++) {
+            var q = uxPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (uxCounts[ch] !== undefined) uxCounts[ch]++;
+        }
+        for (var c = 1; c <= 4; c++) {
+            var el = document.getElementById('count-ux-chap-' + c);
+            if (el) el.innerText = "(" + uxCounts[c] + " preguntas)";
         }
     }
 </script>
