@@ -113,7 +113,7 @@ function startTechQuizFromSetup() {
     runQuizPool(pool, selectedChapters);
 }
 
-// 4. MÓDULO SCRUM (GUÍA OFICIAL) 👈 NUEVA FUNCIÓN AÑADIDA
+// 4. MÓDULO SCRUM (GUÍA OFICIAL) 
 function startScrumQuizFromSetup() {
     activeQuizType = 'scrum';
     var cbs = document.querySelectorAll('.scrum-chap-cb');
@@ -428,10 +428,6 @@ function aplicarSeguridadModulos() {
     }
 }
 
-window.addEventListener('DOMContentLoaded', (event) => {
-    aplicarSeguridadModulos();
-});
-// Ejecutar al cargar la página para recordar la sesión activa
 window.addEventListener('DOMContentLoaded', (event) => {
     aplicarSeguridadModulos();
 });
