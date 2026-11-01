@@ -7,7 +7,7 @@ var currentQuestion = null;
 var questionStats = {};
 var roundNumber = 1;
 var wrongQueue = [];
-var activeQuizType = 'testing'; // 'testing', 'ba', 'tech', 'scrum'
+var activeQuizType = 'testing'; // 'testing', 'ba', 'tech', 'scrum', 'ux'
 var answeredCurrent = false;
 
 // --- CONTROL DE SELECCIÓN GENERAL (GENÉRICO) ---
@@ -135,6 +135,28 @@ function startScrumQuizFromSetup() {
     runQuizPool(pool, selectedChapters);
 }
 
+// 5. MÓDULO UX/UI
+function startUxQuizFromSetup() {
+    activeQuizType = 'ux';
+    var cbs = document.querySelectorAll('.ux-chap-cb');
+    var selectedChapters = [];
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) {
+            selectedChapters.push(parseInt(cbs[i].value, 10));
+        }
+    }
+    
+    var errBox = document.getElementById('ux-setup-error');
+    if (selectedChapters.length === 0) {
+        if (errBox) errBox.style.display = 'block';
+        return;
+    }
+    if (errBox) errBox.style.display = 'none';
+
+    var pool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
+    runQuizPool(pool, selectedChapters);
+}
+
 // --- FILTRADO Y EJECUCIÓN CENTRALIZADA ---
 function runQuizPool(pool, selectedChapters) {
     var tempPool = [];
@@ -203,6 +225,9 @@ function returnToSetup() {
     } else if (activeQuizType === 'scrum') {
         document.getElementById('sub-scrum').style.display = 'block';
         updateSelectionCounter('scrum');
+    } else if (activeQuizType === 'ux') {
+        document.getElementById('sub-ux').style.display = 'block';
+        updateSelectionCounter('ux');
     }
 }
 
@@ -243,8 +268,8 @@ function renderCurrentQuestion() {
     fb.innerHTML = '';
     btnNext.style.display = 'none';
 
-    // Compatibilidad para títulos y textos (Testing/BA/Tech vs Scrum)
-    var chapTitle = currentQuestion.chapterTitle || ("Scrum - Área / Rol " + currentQuestion.chapter);
+    // Compatibilidad para títulos y textos (Testing/BA/Tech/UX vs Scrum)
+    var chapTitle = currentQuestion.chapterTitle || (activeQuizType === 'ux' ? ("UX - Cap. " + currentQuestion.chapter) : ("Scrum - Área / Rol " + currentQuestion.chapter));
     var qText = currentQuestion.q || currentQuestion.question || currentQuestion.pregunta || "";
     var rawOptions = currentQuestion.options || currentQuestion.opciones || [];
     var explanationText = currentQuestion.explanation || currentQuestion.explicacion || "";
@@ -274,7 +299,10 @@ function renderCurrentQuestion() {
 
     box.innerHTML = html;
     
-    var indicatorText = (activeQuizType === 'scrum') ? "Cuestionario Scrum (Guía Oficial)" : ("Ronda " + roundNumber);
+    var indicatorText = "Ronda " + roundNumber;
+    if (activeQuizType === 'scrum') indicatorText = "Cuestionario Scrum (Guía Oficial)";
+    else if (activeQuizType === 'ux') indicatorText = "Cuestionario UX/UI";
+
     document.getElementById('round-indicator').innerText = indicatorText + " - Pregunta " + (currentIndex + 1) + " de " + activeQueue.length;
 }
 
@@ -327,7 +355,7 @@ function checkAnswer(shuffledIdx) {
             btnChosen.style.cursor = 'not-allowed';
         }
 
-        var refText = currentQuestion.pageRef || "Guía de Scrum Oficial";
+        var refText = currentQuestion.pageRef || (activeQuizType === 'ux' ? "Fundamentos de UX/UI" : "Guía de Scrum Oficial");
         var sumText = currentQuestion.summary ? currentQuestion.summary.join(' ') : currentQuestion._resolvedExplanation;
 
         fb.style.background = '#f8d7da';
@@ -411,6 +439,7 @@ function verificarAccesoAdmin(event) {
     
     if (password === passwordReal) {
         sessionStorage.setItem("admin_auth", "true");
+        localStorage.setItem("admin_auth", "true");
         aplicarSeguridadModulos();
         alert("¡Acceso concedido! Módulos 2 y 3 desbloqueados.");
     } else if (password !== null) {
@@ -419,8 +448,8 @@ function verificarAccesoAdmin(event) {
 }
 
 function aplicarSeguridadModulos() {
-    var esAdmin = sessionStorage.getItem("admin_auth");
-    if (esAdmin === "true") {
+    var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
+    if (esAdmin) {
         var btn2 = document.getElementById("btn-mod-2");
         var btn3 = document.getElementById("btn-mod-3");
         if (btn2) btn2.style.display = "inline-block";
