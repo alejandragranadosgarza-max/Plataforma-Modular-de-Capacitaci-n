@@ -1,6 +1,8 @@
 var narrativeCounter = 0;
 var globalBusinessObjectives = [];
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
 window.addEventListener('DOMContentLoaded', (event) => {
     var container = document.getElementById('narratives-container');
     if (container && container.children.length === 0) {
@@ -8,90 +10,35 @@ window.addEventListener('DOMContentLoaded', (event) => {
     }
 });
 
-// --- CARGADOR DE OBJETIVOS COMERCIALES (TXT, CSV, XML, JSON) ---
-function loadBusinessObjectives(event) {
+// --- CARGADOR DE OBJETIVOS COMERCIALES (.DOC y .DOCX)
+function loadWordTemplate(event) {
     var file = event.target.files[0];
     if (!file) return;
 
     var fileName = file.name.toLowerCase();
 
-    if (fileName.endsWith('.doc') || fileName.endsWith('.docx') || fileName.endsWith('.pdf')) {
-        alert("⚠️ Los archivos Word y PDF son binarios. Por favor utiliza un archivo de texto plano (.txt), .csv, .xml o .json para el catálogo.");
-        event.target.value = "";
+    // Validar si es un documento de Word tradicional (.doc)
+    if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
+        alert("⚠️ Has seleccionado un archivo formato .doc antiguo. Te sugerimos guardarlo como .docx (Word moderno) para asegurar una lectura perfecta de tablas y estructuras.");
+        // Opcional: puedes intentar procesarlo o pedir la conversión
         return;
     }
 
+    // Si es .docx, prosigue con la lectura normal con Mammoth.js
     var reader = new FileReader();
-    reader.onload = function(e) {
-        var content = e.target.result;
-        globalBusinessObjectives = [];
-
-        try {
-            if (fileName.endsWith('.json')) {
-                var data = JSON.parse(content);
-                if (Array.isArray(data)) {
-                    globalBusinessObjectives = data.map(item => ({
-                        key: item.key || item.clave || 'OBJ-00',
-                        name: item.name || item.nombre || 'Objetivo sin nombre'
-                    }));
-                }
-            } else if (fileName.endsWith('.csv')) {
-                var lines = content.split('\n');
-                lines.forEach(line => {
-                    var parts = line.split(',');
-                    if (parts.length >= 2) {
-                        globalBusinessObjectives.push({
-                            key: parts[0].trim(),
-                            name: parts[1].trim()
-                        });
-                    }
-                });
-            } else if (fileName.endsWith('.xml')) {
-                var parser = new DOMParser();
-                var xmlDoc = parser.parseFromString(content, "text/xml");
-                var objs = xmlDoc.getElementsByTagName("objective") || xmlDoc.getElementsByTagName("objetivo");
-                for (var i = 0; i < objs.length; i++) {
-                    var k = objs[i].getAttribute("key") || objs[i].getAttribute("clave") || "OBJ-00";
-                    var n = objs[i].textContent || "Objetivo";
-                    globalBusinessObjectives.push({ key: k.trim(), name: n.trim() });
-                }
-            } else {
-                var lines = content.split('\n');
-                lines.forEach(line => {
-                    var cleanLine = line.trim();
-                    if (cleanLine.length > 0) {
-                        if (cleanLine.includes('-')) {
-                            var parts = cleanLine.split('-');
-                            globalBusinessObjectives.push({
-                                key: parts[0].trim(),
-                                name: parts.slice(1).join('-').trim()
-                            });
-                        } else {
-                            globalBusinessObjectives.push({
-                                key: "OBJ-" + (globalBusinessObjectives.length + 1),
-                                name: cleanLine
-                            });
-                        }
-                    }
-                });
-            }
-
-            if (globalBusinessObjectives.length === 0) {
-                alert("⚠️ No se pudieron extraer objetivos comerciales válidos del archivo.");
-                return;
-            }
-
-            updateAllObjectiveDropdowns();
-            alert("✅ ¡Se cargaron " + globalBusinessObjectives.length + " objetivos comerciales correctamente!");
-
-        } catch (err) {
-            alert("⚠️ Error al procesar el archivo de objetivos comerciales.");
-            console.error(err);
-        }
-        event.target.value = "";
+    reader.onload = function(loadEvent) {
+        var arrayBuffer = loadEvent.target.result;
+        mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+            .then(function(result) {
+                parseWordHtmlContent(result.value);
+                alert("¡Plantilla de Word procesada con éxito!");
+            })
+            .catch(function(error) {
+                console.error("Error al procesar el archivo Word:", error);
+                alert("⚠️ Error al leer el documento. Verifica que el archivo no esté protegido o dañado.");
+            });
     };
-
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
 }
 
 function updateAllObjectiveDropdowns() {
