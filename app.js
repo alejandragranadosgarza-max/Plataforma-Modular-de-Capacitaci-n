@@ -83,11 +83,14 @@ function updateSelectionCounter() {
     if (errBox && count > 0) errBox.style.display = 'none';
 }
 
+// --- CONTROL DE SELECCIÓN Y ACUMULACIÓN TOTAL: TESTING (ISTQB) ---
 function startQuizFromSetup() {
     var cbs = document.querySelectorAll('.chap-cb');
     var selectedChapters = [];
     for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) selectedChapters.push(parseInt(cbs[i].value, 10));
+        if (cbs[i].checked) {
+            selectedChapters.push(parseInt(cbs[i].value, 10));
+        }
     }
 
     var errBox = document.getElementById('setup-error');
@@ -97,21 +100,63 @@ function startQuizFromSetup() {
     }
     if (errBox) errBox.style.display = 'none';
 
-    activeQuizMode = 'testing';
-    var pool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
+    activeQuizType = 'testing';
     
-    currentQuestionsList = [];
+    // Obtener el banco de preguntas disponible de ISTQB
+    var pool = [];
+    if (typeof testingQuestions !== 'undefined' && Array.isArray(testingQuestions)) {
+        pool = testingQuestions;
+    } else if (typeof allQuestions !== 'undefined' && Array.isArray(allQuestions)) {
+        pool = allQuestions;
+    }
+
+    // ACUMULAR ABSOLUTAMENTE TODAS las preguntas de los capítulos seleccionados
+    var tempPool = [];
     for (var j = 0; j < pool.length; j++) {
-        if (selectedChapters.indexOf(pool[j].chapter) !== -1) {
-            currentQuestionsList.push(pool[j]);
+        var q = pool[j];
+        if (selectedChapters.indexOf(parseInt(q.chapter, 10)) !== -1) {
+            tempPool.push(q);
         }
     }
 
-    if (currentQuestionsList.length === 0) {
-        alert("No hay preguntas disponibles para los capítulos seleccionados.");
+    if (tempPool.length === 0) {
+        alert("⚠️ No se encontraron preguntas para los capítulos seleccionados. Verifica que el archivo de preguntas contenga la propiedad 'chapter'.");
         return;
     }
 
+    // Barajado aleatorio con el algoritmo Fisher-Yates del 100% de las preguntas acumuladas
+    for (var i = tempPool.length - 1; i > 0; i--) {
+        var r = Math.floor(Math.random() * (i + 1));
+        var temp = tempPool[i];
+        tempPool[i] = tempPool[r];
+        tempPool[r] = temp;
+    }
+
+    // Asignar el total de la cola acumulada sin cortes de ningún tipo
+    activeQueue = tempPool; 
+
+    // Inicializar estadísticas de sesión
+    questionStats = {};
+    for (var k = 0; k < activeQueue.length; k++) {
+        questionStats[activeQueue[k].id] = { attempts: 0, solved: false, solvedOn: 0 };
+    }
+
+    roundNumber = 1;
+    currentIndex = 0;
+    
+    // Transición de pantallas
+    var setupDiv = document.getElementById('quiz-setup');
+    if (setupDiv) setupDiv.style.display = 'none';
+    
+    var sumDiv = document.getElementById('quiz-summary');
+    if (sumDiv) sumDiv.style.display = 'none';
+    
+    var activeDiv = document.getElementById('quiz-active');
+    if (activeDiv) activeDiv.style.display = 'block';
+
+    refreshScoreboard();
+    renderCurrentQuestion();
+}
     // Barajar con Fisher-Yates
     for (var i = currentQuestionsList.length - 1; i > 0; i--) {
         var r = Math.floor(Math.random() * (i + 1));
@@ -121,7 +166,7 @@ function startQuizFromSetup() {
     }
 
     initQuizSession();
-}
+
 
 // --- CONTROL DE SELECCIÓN: BUSINESS ANALYSIS (BABOK v3) ---
 function toggleAllBaChapters(state) {
