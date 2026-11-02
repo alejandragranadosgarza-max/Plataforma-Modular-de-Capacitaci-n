@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plataforma Modular de Capacitación y Evaluación de Historias de usuario o Narrativas</title>
+    
+    <!-- Enlace a tu hoja de estilos independiente (style.css de 277 líneas) -->
     <link rel="stylesheet" href="style.css">
 
     <!-- Importar Mammoth.js desde CDN para leer archivos .docx en el navegador -->
@@ -14,7 +16,6 @@
     <meta name="theme-color" content="#6b21a8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
 </head>
 <body>
 
@@ -40,7 +41,7 @@
             <button type="button" class="btn btn-accent" onclick="switchCapSubModule('sub-ba')">📊 Business Analysis (BABOK v3)</button>
             <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="switchCapSubModule('sub-tech')">⚙️ Cuestionario de Conceptos Técnicos</button>
             <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="switchCapSubModule('sub-scrum')">📋 Cuestionario SCRUM (Guía Oficial)</button>
-            <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="switchCapSubModule('sub-ux')">🎨 Diseño UX/UI</button> <!-- 👈 Nuevo botón UX -->
+            <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="switchCapSubModule('sub-ux')">🎨 Diseño UX/UI</button>
         </div>
 
         <!-- Submódulo Testing -->
@@ -210,7 +211,7 @@
             </div>
         </div>
 
-<!-- Submódulo UX -->
+        <!-- Submódulo UX -->
         <div id="sub-ux" class="cap-submodule" style="display:none;">
             <div id="ux-quiz-setup" class="card">
                 <h3>Selecciona los capítulos o áreas para tu cuestionario de UX/UI</h3>
@@ -312,12 +313,8 @@
                 <input type="text" id="nar-project" placeholder="Ej. Sistema de Nómina y Finanzas" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;">
                 
                 <div style="margin-bottom: 20px; background: #f3f0ff; padding: 15px; border-radius: 6px; border: 1px dashed #7c3aed;">
-    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Plantilla Corporativa (.docx o .doc):</b></label>
-    
-    <!-- Se actualiza el accept para permitir .docx y .doc -->
-                <input type="file" id="word-catalog-file" 
-                    accept=".docx, .doc, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                    onchange="loadWordTemplate(event)" style="font-size: 0.85rem;">
+                    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Plantilla Corporativa (.docx o .doc):</b></label>
+                    <input type="file" id="word-catalog-file" accept=".docx, .doc, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadWordTemplate(event)" style="font-size: 0.85rem;">
                     <small style="display: block; color: #6b7280; margin-top: 4px;">Sube la plantilla oficial de Word (.docx o .doc) de tu empresa para extraer objetivos y necesidades automáticamente.</small>
                 </div>
 
@@ -340,7 +337,7 @@
 
 </div>
 
-<!-- Carga de Archivos de Preguntas y Lógica Principal -->
+<!-- Carga de Archivos de Preguntas y Lógica Principal (Modular) -->
 <script src="questions_testing.js"></script>
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
@@ -352,7 +349,8 @@
 
 <script>
     function switchMainTab(tabId, btn) {
-        if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && localStorage.getItem("admin_auth") !== "true") {
+        var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
+        if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && !esAdmin) {
             alert("Acceso restringido. Debes iniciar sesión como administradora.");
             return;
         }
@@ -444,7 +442,8 @@
             var el = document.getElementById('count-scrum-chap-' + c);
             if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
         }
-       // Conteo para UX
+
+        // Conteo para UX
         var uxPool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
         var uxCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < uxPool.length; i++) {
@@ -458,7 +457,6 @@
         }
     }
 
-    // Ejecutar conteo inicial al terminar de cargar los scripts
     window.addEventListener('DOMContentLoaded', updateAllChapterCounts);
 </script>
 <script>
