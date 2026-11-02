@@ -1,477 +1,528 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma Modular de Capacitación y Evaluación de Historias de usuario o Narrativas</title>
-    <link rel="stylesheet" href="style.css">
+// ==========================================
+// ESTADO GLOBAL DE LA APLICACIÓN Y CUESTIONARIOS
+// ==========================================
+var currentQuestionsList = [];
+var currentQuestionIndex = 0;
+var currentQuestion = null;
+var answeredCurrent = false;
+var questionStats = {}; 
+var activeQuizMode = 'testing'; // 'testing', 'ba', o 'tech'
 
-    <!-- Importar Mammoth.js desde CDN para leer archivos .docx en el navegador -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+// --- FUNCIONES DE NAVEGACIÓN Y MENÚ ---
+function showModule(modId, btn) {
+    var mods = document.querySelectorAll('.module');
+    for (var i = 0; i < mods.length; i++) {
+        mods[i].classList.remove('active');
+    }
+    var btns = document.querySelectorAll('nav button');
+    for (var j = 0; j < btns.length; j++) {
+        btns[j].classList.remove('active');
+    }
+    document.getElementById(modId).classList.add('active');
+    if (btn) btn.classList.add('active');
+}
 
-    <!-- Enlace al manifiesto de la PWA -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6b21a8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+function switchCapSubModule(subId) {
+    var subs = document.querySelectorAll('.cap-submodule');
+    for (var i = 0; i < subs.length; i++) {
+        subs[i].style.display = 'none';
+    }
+    document.getElementById(subId).style.display = 'block';
 
-</head>
-<body>
+    var act = document.getElementById('quiz-active');
+    var sum = document.getElementById('quiz-summary');
+    if (act) act.style.display = 'none';
+    if (sum) sum.style.display = 'none';
 
-<header>
-    <h1>Plataforma Modular de Capacitación y Evaluación</h1>
-</header>
+    if (subId === 'sub-testing') {
+        var setup = document.getElementById('quiz-setup');
+        if (setup) setup.style.display = 'block';
+        updateSelectionCounter();
+    } else if (subId === 'sub-ba') {
+        var baSetup = document.getElementById('ba-quiz-setup');
+        if (baSetup) baSetup.style.display = 'block';
+        updateBaSelectionCounter();
+    } else if (subId === 'sub-tech') {
+        var techSetup = document.getElementById('tech-quiz-setup');
+        if (techSetup) techSetup.style.display = 'block';
+        updateTechSelectionCounter();
+    }
+}
 
-<nav>
-    <button type="button" class="active" onclick="switchMainTab('tab-training', this)">Módulo 1: Capacitación</button>
-    <button type="button" id="btn-mod-2" style="display: none;" onclick="switchMainTab('tab-lab', this)">Módulo 2: Laboratorio ATDD</button>
-    <button type="button" id="btn-mod-3" style="display: none;" onclick="switchMainTab('tab-narrative', this)">Módulo 3: Evaluación de Narrativas</button>
-</nav>
+// --- CONTROL DE SELECCIÓN: TESTING (ISTQB) ---
+function toggleAllChapters(state) {
+    var cbs = document.querySelectorAll('.chap-cb');
+    for (var i = 0; i < cbs.length; i++) {
+        cbs[i].checked = state;
+        var card = cbs[i].closest('.chapter-card');
+        if (card) {
+            if (state) card.classList.remove('unchecked');
+            else card.classList.add('unchecked');
+        }
+    }
+    updateSelectionCounter();
+}
 
-<div class="container">
+function updateSelectionCounter() {
+    var cbs = document.querySelectorAll('.chap-cb');
+    var count = 0;
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) count++;
+        var card = cbs[i].closest('.chapter-card');
+        if (card) {
+            if (cbs[i].checked) card.classList.remove('unchecked');
+            else card.classList.add('unchecked');
+        }
+    }
+    var badge = document.getElementById('sel-counter');
+    var errBox = document.getElementById('setup-error');
+    if (badge) {
+        badge.innerText = count + " de 6 capítulos seleccionados";
+        badge.style.background = (count > 0) ? "#28a745" : "#dc3545";
+    }
+    if (errBox && count > 0) errBox.style.display = 'none';
+}
 
-    <!-- MÓDULO 1: CAPACITACIÓN -->
-    <div id="tab-training" class="module active">
-        <h2>Cuestionario de evaluación</h2>
-        <p>Selecciona la disciplina y los capítulos o áreas de conocimiento que deseas evaluar:</p>
+function startQuizFromSetup() {
+    var cbs = document.querySelectorAll('.chap-cb');
+    var selectedChapters = [];
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) selectedChapters.push(parseInt(cbs[i].value, 10));
+    }
 
-        <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" class="btn" onclick="switchCapSubModule('sub-testing')">🧪 Testing (ISTQB v4.0)</button>
-            <button type="button" class="btn btn-accent" onclick="switchCapSubModule('sub-ba')">📊 Business Analysis (BABOK v3)</button>
-            <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="switchCapSubModule('sub-tech')">⚙️ Cuestionario de Conceptos Técnicos</button>
-            <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="switchCapSubModule('sub-scrum')">📋 Cuestionario SCRUM (Guía Oficial)</button>
-            <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="switchCapSubModule('sub-ux')">🎨 Diseño UX/UI</button> <!-- 👈 Nuevo botón UX -->
-        </div>
+    var errBox = document.getElementById('setup-error');
+    if (selectedChapters.length === 0) {
+        if (errBox) errBox.style.display = 'block';
+        return;
+    }
+    if (errBox) errBox.style.display = 'none';
 
-        <!-- Submódulo Testing -->
-        <div id="sub-testing" class="cap-submodule">
-            <div id="quiz-setup" class="card">
-                <h3>Selecciona los capítulos para tu cuestionario (Niveles K1 y K2)</h3>
-                <p style="font-size: 0.82rem; color: #555; margin-top: -5px; margin-bottom: 12px;">
-                    ℹ️ <b>Nivel K1 (Recordar):</b> Reconocimiento y recuerdo de conceptos. &nbsp;|&nbsp; 
-                    <b>Nivel K2 (Comprender):</b> Explicar, clasificar y ejemplificar conceptos.
-                </p>
-                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'testing')">Marcar Todos</button>
-                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'testing')">Desmarcar Todos</button>
-                   <span id="testing-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
-                </div>
-                
-                <div class="chapter-grid">
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="chap-1" class="testing-chap-cb" value="1" onchange="updateSelectionCounter('testing')"> 
-                        <span><b>Cap. 1:</b> Fundamentos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-1">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="chap-2" class="testing-chap-cb" value="2" onchange="updateSelectionCounter('testing')"> 
-                        <span><b>Cap. 2:</b> SDLC y Pruebas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-2">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="chap-3" class="testing-chap-cb" value="3" onchange="updateSelectionCounter('testing')"> 
-                        <span><b>Cap. 3:</b> Pruebas Estáticas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-3">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="chap-4" class="testing-chap-cb" value="4" onchange="updateSelectionCounter('testing')"> 
-                        <span><b>Cap. 4:</b> Análisis y Diseño <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-4">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="chap-5" class="testing-chap-cb" value="5" onchange="updateSelectionCounter('testing')"> 
-                        <span><b>Cap. 5:</b> Gestión <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-5">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="chap-6" class="testing-chap-cb" value="6" onchange="updateSelectionCounter('testing')"> 
-                        <span><b>Cap. 6:</b> Herramientas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-6">(...) </small></span>
-                    </label>
-                </div>
-
-                <div id="testing-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
-                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
-                </div>
-
-                <button type="button" class="btn" onclick="startQuizFromSetup()">Iniciar Cuestionario Testing</button>
-            </div>
-        </div>
-
-       <!-- Submódulo Business Analysis -->
-        <div id="sub-ba" class="cap-submodule" style="display:none;">
-            <div id="ba-quiz-setup" class="card">
-                <h3>Selecciona los capítulos para tu cuestionario (BABOK v3)</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'ba')">Marcar Todos</button>
-                  <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'ba')">Desmarcar Todos</button>
-                  <span id="ba-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
-                </div>
-                
-                <div class="chapter-grid">
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ba-chap-1" class="ba-chap-cb" value="1" onchange="updateSelectionCounter('ba')"> 
-                        <span><b>Cap. 1:</b> BACCM y Fundamentos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-1">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ba-chap-2" class="ba-chap-cb" value="2" onchange="updateSelectionCounter('ba')"> 
-                        <span><b>Cap. 2:</b> Planificación y Seguimiento <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-2">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ba-chap-3" class="ba-chap-cb" value="3" onchange="updateSelectionCounter('ba')"> 
-                        <span><b>Cap. 3:</b> Obtención y Colaboración <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-3">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ba-chap-4" class="ba-chap-cb" value="4" onchange="updateSelectionCounter('ba')"> 
-                        <span><b>Cap. 4:</b> Gestión Ciclo de Vida <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-4">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ba-chap-5" class="ba-chap-cb" value="5" onchange="updateSelectionCounter('ba')"> 
-                        <span><b>Cap. 5:</b> Análisis de Estrategia <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-5">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ba-chap-6" class="ba-chap-cb" value="6" onchange="updateSelectionCounter('ba')"> 
-                        <span><b>Cap. 6:</b> Análisis y Diseño (RADD) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-6">(...) </small></span>
-                    </label>
-                </div>
-
-                <div id="ba-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
-                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
-                </div>
-
-                <button type="button" class="btn btn-accent" onclick="startBaQuizFromSetup()">Iniciar Cuestionario BA</button>
-            </div>
-        </div>
-
-        <!-- Submódulo Conceptos Técnicos -->
-        <div id="sub-tech" class="cap-submodule" style="display:none;">
-            <div id="tech-quiz-setup" class="card">
-                <h3>Selecciona las categorías técnicas a evaluar</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                    <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'tech')">Marcar Todos</button>
-                    <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'tech')">Desmarcar Todos</button>
-                    <span id="tech-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
-                </div>
-                <div class="chapter-grid">
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="tech-1" class="tech-chap-cb" value="1" onchange="updateSelectionCounter('tech')"> 
-                        <span><b>Cat. 1:</b> Arquitectura y Redes <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-1">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="tech-2" class="tech-chap-cb" value="2" onchange="updateSelectionCounter('tech')"> 
-                        <span><b>Cat. 2:</b> SQL (Básico a Avanzado) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-2">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="tech-3" class="tech-chap-cb" value="3" onchange="updateSelectionCounter('tech')"> 
-                        <span><b>Cat. 3:</b> Jira y Confluence <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-3">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="tech-4" class="tech-chap-cb" value="4" onchange="updateSelectionCounter('tech')"> 
-                        <span><b>Cat. 4:</b> IA, Selenium y DevOps <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-4">(...) </small></span>
-                    </label>
-                </div>
-
-                <div id="tech-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
-                    ⚠️ Debes seleccionar al menos una categoría técnica para iniciar.
-                </div>
-
-                <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="startTechQuizFromSetup()">Iniciar Cuestionario Técnico</button>
-            </div>
-        </div>
-
-       <!-- Submódulo Scrum -->
-        <div id="sub-scrum" class="cap-submodule" style="display:none;">
-            <div id="scrum-quiz-setup" class="card">
-                <h3>Selecciona los roles o áreas para tu cuestionario de Scrum</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'scrum')">Marcar Todos</button>
-                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'scrum')">Desmarcar Todos</button>
-                   <span id="scrum-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
-                </div>
-
-                <div class="chapter-grid">
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="scrum-chap-1" class="scrum-chap-cb" value="1" onchange="updateSelectionCounter('scrum')"> 
-                        <span><b>Cap. 1:</b> Dueño de Producto (PO) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-1">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="scrum-chap-2" class="scrum-chap-cb" value="2" onchange="updateSelectionCounter('scrum')"> 
-                        <span><b>Cap. 2:</b> Equipo de Desarrollo <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-2">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="scrum-chap-3" class="scrum-chap-cb" value="3" onchange="updateSelectionCounter('scrum')"> 
-                        <span><b>Cap. 3:</b> Scrum Master <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-3">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="scrum-chap-4" class="scrum-chap-cb" value="4" onchange="updateSelectionCounter('scrum')"> 
-                        <span><b>Cap. 4:</b> Eventos y Artefactos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-4">(...) </small></span>
-                    </label>
-                </div>
-
-                <div id="scrum-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
-                    ⚠️ Debes seleccionar al menos un área para iniciar.
-                </div>
-
-                <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="startScrumQuizFromSetup()">Iniciar Cuestionario Scrum</button>
-            </div>
-        </div>
-
-<!-- Submódulo UX -->
-        <div id="sub-ux" class="cap-submodule" style="display:none;">
-            <div id="ux-quiz-setup" class="card">
-                <h3>Selecciona los capítulos o áreas para tu cuestionario de UX/UI</h3>
-                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'ux')">Marcar Todos</button>
-                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'ux')">Desmarcar Todos</button>
-                   <span id="ux-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 capítulos seleccionados</span>
-                </div>
-
-                <div class="chapter-grid">
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ux-chap-1" class="ux-chap-cb" value="1" onchange="updateSelectionCounter('ux')"> 
-                        <span><b>Cap. 1:</b> UX & Research <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-1">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ux-chap-2" class="ux-chap-cb" value="2" onchange="updateSelectionCounter('ux')"> 
-                        <span><b>Cap. 2:</b> Arquitectura e Interacción <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-2">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ux-chap-3" class="ux-chap-cb" value="3" onchange="updateSelectionCounter('ux')"> 
-                        <span><b>Cap. 3:</b> Prototipado y UI <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-3">(...) </small></span>
-                    </label>
-                    <label class="chapter-card unchecked">
-                        <input type="checkbox" id="ux-chap-4" class="ux-chap-cb" value="4" onchange="updateSelectionCounter('ux')"> 
-                        <span><b>Cap. 4:</b> Pruebas de Usabilidad y Métricas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-4">(...) </small></span>
-                    </label>
-                </div>
-
-                <div id="ux-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
-                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
-                </div>
-
-                <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="startUxQuizFromSetup()">Iniciar Cuestionario UX</button>
-            </div>
-        </div>
-
-        <!-- ZONA ACTIVA DE CUESTIONARIOS -->
-        <div id="quiz-active" style="display:none; margin-top: 15px;">
-            <div class="scoreboard">
-                <div class="score-item">✅ 1er Chance<span id="stat-1st">0</span></div>
-                <div class="score-item">🎯 2do Chance<span id="stat-2nd">0</span></div>
-                <div class="score-item">🔄 3+ Chances<span id="stat-more">0</span></div>
-                <div class="score-item">❌ Pendientes<span id="stat-wrong">0</span></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <b id="round-indicator" style="color:#6b21a8;">Ronda Principal</b>
-                <button type="button" class="btn-outline" onclick="returnToSetup()">⚙️ Cambiar Selección</button>
-            </div>
-            <div id="question-box" class="card"></div>
-            <div id="quiz-feedback" class="feedback"></div>
-            <button type="button" id="btn-next" class="btn" onclick="nextQuestion()" style="display:none;">Siguiente Pregunta ➔</button>
-        </div>
-
-        <!-- RESUMEN DE FIN DE RONDA -->
-        <div id="quiz-summary" class="card" style="display:none; margin-top: 15px;">
-            <h3>🏁 Resumen de Fin de Ronda</h3>
-            <p id="summary-text"></p>
-            <div id="summary-details" class="study-box"></div>
-            <div style="margin-top:15px;">
-                <button type="button" id="btn-retry-wrong" class="btn btn-accent" onclick="startRetryWrongRound()">🔄 Repasar solo preguntas erróneas</button>
-                <button type="button" class="btn" onclick="returnToSetup()">🔁 Volver a Configurar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MÓDULO 2: LABORATORIO ATDD -->
-    <div id="tab-lab" class="module">
-        <h2>Laboratorio ATDD - Generación y Validación de Historias de Usuario</h2>
-        <p>Diseña tus Historias de Usuario bajo el estándar INVEST / 3C y valida criterios de aceptación (Positivo, Negativo y No Funcional):</p>
-        
-        <div class="card">
-            <label><b>Nombre del Proyecto Global:</b></label>
-            <input type="text" id="atdd-project" placeholder="Ej. Portal E-Commerce Corporativo" style="width: 100%; padding: 8px; margin-bottom: 15px;">
-            
-            <div id="stories-container"></div>
-
-            <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="button" class="btn" onclick="addStoryForm()">➕ Agregar otra Historia de Usuario</button>
-                <button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar Historias (INVEST / 3C)</button>
-                <button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportToExcelCSV()">📥 Exportar CSV (Excel / Jira)</button>
-                <button type="button" class="btn" style="background: #6c757d; color: white;" onclick="exportToJiraTXT()">📄 Exportar TXT Jira</button>
-                <label class="btn btn-outline" style="cursor: pointer; display: inline-block; margin: 0;">
-                    📁 Importar Archivo <input type="file" id="import-file" style="display: none;" onchange="handleFileImport(event)">
-                </label>
-            </div>
-        </div>
-
-        <div id="atdd-output" class="card" style="display:none; margin-top: 15px;"></div>
-    </div>
-
-    <!-- MÓDULO 3: EVALUACIÓN DE NARRATIVAS (CASCADA) -->
-    <div id="tab-narrative" class="module">
-        <div style="max-width: 1000px; margin: 0 auto;">
-            <h2>Evaluación y Gestión de Narrativas (Metodologías Tradicionales / Cascada)</h2>
-            <p>Valida especificaciones formales sin ambigüedades, entradas, salidas y criterios claros para Desarrollo y QA, generando carpetas físicas y documentos editables:</p>
-            
-            <div class="card" style="padding: 25px;">
-                <label style="display: block; margin-bottom: 8px;"><b>Nombre del Proyecto:</b></label>
-                <input type="text" id="nar-project" placeholder="Ej. Sistema de Nómina y Finanzas" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;">
-                
-                <div style="margin-bottom: 20px; background: #f3f0ff; padding: 15px; border-radius: 6px; border: 1px dashed #7c3aed;">
-    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Plantilla Corporativa (.docx o .doc):</b></label>
+    activeQuizMode = 'testing';
+    var pool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
     
-    <!-- Se actualiza el accept para permitir .docx y .doc -->
-                <input type="file" id="word-catalog-file" 
-                    accept=".docx, .doc, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                    onchange="loadWordTemplate(event)" style="font-size: 0.85rem;">
-                    <small style="display: block; color: #6b7280; margin-top: 4px;">Sube la plantilla oficial de Word (.docx o .doc) de tu empresa para extraer objetivos y necesidades automáticamente.</small>
-                </div>
-
-                <div id="narratives-container"></div>
-
-                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento Funcional</button>
-                    <button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Validar Narrativas (SRS)</button>
-                    <button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportProjectFoldersAndFiles()">📁 Descargar Script Windows y Doc Word</button>
-                    <button type="button" class="btn" style="background: #17a2b8; color: white;" onclick="exportProjectJSON()">📤 Exportar Proyecto (JSON)</button>
-                    <label class="btn" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0;">
-                        📥 Importar Proyecto <input type="file" id="import-project-file" accept=".json" style="display: none;" onchange="importProjectJSON(event)">
-                    </label>
-                </div>
-            </div>
-
-            <div id="nar-output" class="card" style="display:none; margin-top: 20px; padding: 25px;"></div>
-        </div>
-    </div>
-
-</div>
-
-<!-- Carga de Archivos de Preguntas y Lógica Principal -->
-<script src="questions_testing.js"></script>
-<script src="questions_ba.js"></script>
-<script src="questions_tech.js"></script>
-<script src="questions_scrum.js"></script>
-<script src="questions_ux.js"></script>
-<script src="app.js"></script>
-<script src="atdd_lab.js"></script>
-<script src="narrative_eval_lab.js"></script>
-
-<script>
-    function switchMainTab(tabId, btn) {
-        if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && localStorage.getItem("admin_auth") !== "true") {
-            alert("Acceso restringido. Debes iniciar sesión como administradora.");
-            return;
-        }
-
-        var mods = document.querySelectorAll('.container > .module');
-        for (var i = 0; i < mods.length; i++) mods[i].classList.remove('active');
-        var btns = document.querySelectorAll('nav button');
-        for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
-        
-        var targetMod = document.getElementById(tabId);
-        if (targetMod) targetMod.classList.add('active');
-        if (btn) btn.classList.add('active');
-    }
-
-    function switchCapSubModule(subId) {
-        var subs = document.querySelectorAll('.cap-submodule');
-        for (var i = 0; i < subs.length; i++) subs[i].style.display = 'none';
-        var targetSub = document.getElementById(subId);
-        if (targetSub) targetSub.style.display = 'block';
-        
-        var act = document.getElementById('quiz-active');
-        var sum = document.getElementById('quiz-summary');
-        if(act) act.style.display = 'none';
-        if(sum) sum.style.display = 'none';
-        
-        if(subId === 'sub-testing') {
-            updateSelectionCounter('testing');
-        } else if(subId === 'sub-ba') {
-            updateSelectionCounter('ba');
-        } else if(subId === 'sub-tech') {
-            updateSelectionCounter('tech');
-        } else if(subId === 'sub-scrum') {
-            updateSelectionCounter('scrum');
-        } else if(subId === 'sub-ux') {
-            updateSelectionCounter('ux');
-        }
-        updateAllChapterCounts();
-    }
-
-    function updateAllChapterCounts() {
-        // Conteo para Testing
-        var tPool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
-        var tCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-        for (var i = 0; i < tPool.length; i++) {
-            var q = tPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (tCounts[ch] !== undefined) tCounts[ch]++;
-        }
-        for (var c = 1; c <= 6; c++) {
-            var el = document.getElementById('count-chap-' + c);
-            if (el) el.innerText = "(" + tCounts[c] + " preguntas)";
-        }
-
-        // Conteo para Business Analysis (BA)
-        var bPool = (typeof baQuestions !== 'undefined') ? baQuestions : [];
-        var bCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-        for (var i = 0; i < bPool.length; i++) {
-            var q = bPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (bCounts[ch] !== undefined) bCounts[ch]++;
-        }
-        for (var c = 1; c <= 6; c++) {
-            var el = document.getElementById('count-ba-chap-' + c);
-            if (el) el.innerText = "(" + bCounts[c] + " preguntas)";
-        }
-
-        // Conteo para Conceptos Técnicos
-        var techPool = (typeof techQuestions !== 'undefined') ? techQuestions : [];
-        var techCounts = {1:0, 2:0, 3:0, 4:0};
-        for (var i = 0; i < techPool.length; i++) {
-            var q = techPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (techCounts[ch] !== undefined) techCounts[ch]++;
-        }
-        for (var c = 1; c <= 4; c++) {
-            var el = document.getElementById('count-tech-' + c);
-            if (el) el.innerText = "(" + techCounts[c] + " preguntas)";
-        }
-
-        // Conteo para Scrum
-        var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
-        var scrumCounts = {1:0, 2:0, 3:0, 4:0};
-        for (var i = 0; i < scrumPool.length; i++) {
-            var q = scrumPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (scrumCounts[ch] !== undefined) scrumCounts[ch]++;
-        }
-        for (var c = 1; c <= 4; c++) {
-            var el = document.getElementById('count-scrum-chap-' + c);
-            if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
-        }
-       // Conteo para UX
-        var uxPool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
-        var uxCounts = {1:0, 2:0, 3:0, 4:0};
-        for (var i = 0; i < uxPool.length; i++) {
-            var q = uxPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-            if (uxCounts[ch] !== undefined) uxCounts[ch]++;
-        }
-        for (var c = 1; c <= 4; c++) {
-            var el = document.getElementById('count-ux-chap-' + c);
-            if (el) el.innerText = "(" + uxCounts[c] + " preguntas)";
+    currentQuestionsList = [];
+    for (var j = 0; j < pool.length; j++) {
+        if (selectedChapters.indexOf(pool[j].chapter) !== -1) {
+            currentQuestionsList.push(pool[j]);
         }
     }
 
-    // Ejecutar conteo inicial al terminar de cargar los scripts
-    window.addEventListener('DOMContentLoaded', updateAllChapterCounts);
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((reg) => console.log('Service Worker registrado con éxito:', reg.scope))
-        .catch((err) => console.log('Error al registrar el Service Worker:', err));
-    });
-  }
-</script>
-<div style="text-align: right; padding: 15px; font-size: 0.8rem;">
-    <a href="javascript:void(0);" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none;">🔒 Acceso Admin</a>
-</div>
-</body>
-</html>
+    if (currentQuestionsList.length === 0) {
+        alert("No hay preguntas disponibles para los capítulos seleccionados.");
+        return;
+    }
+
+    // Barajar con Fisher-Yates
+    for (var i = currentQuestionsList.length - 1; i > 0; i--) {
+        var r = Math.floor(Math.random() * (i + 1));
+        var temp = currentQuestionsList[i];
+        currentQuestionsList[i] = currentQuestionsList[r];
+        currentQuestionsList[r] = temp;
+    }
+
+    initQuizSession();
+}
+
+// --- CONTROL DE SELECCIÓN: BUSINESS ANALYSIS (BABOK v3) ---
+function toggleAllBaChapters(state) {
+    var cbs = document.querySelectorAll('.ba-chap-cb');
+    for (var i = 0; i < cbs.length; i++) {
+        cbs[i].checked = state;
+        var card = cbs[i].closest('.chapter-card');
+        if (card) {
+            if (state) card.classList.remove('unchecked');
+            else card.classList.add('unchecked');
+        }
+    }
+    updateBaSelectionCounter();
+}
+
+function updateBaSelectionCounter() {
+    var cbs = document.querySelectorAll('.ba-chap-cb');
+    var count = 0;
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) count++;
+        var card = cbs[i].closest('.chapter-card');
+        if (card) {
+            if (cbs[i].checked) card.classList.remove('unchecked');
+            else card.classList.add('unchecked');
+        }
+    }
+    var badge = document.getElementById('ba-sel-counter');
+    var errBox = document.getElementById('ba-setup-error');
+    if (badge) {
+        badge.innerText = count + " de 6 áreas seleccionadas";
+        badge.style.background = (count > 0) ? "#28a745" : "#dc3545";
+    }
+    if (errBox && count > 0) errBox.style.display = 'none';
+}
+
+function startBaQuiz() {
+    var cbs = document.querySelectorAll('.ba-chap-cb');
+    var selectedChapters = [];
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) selectedChapters.push(parseInt(cbs[i].value, 10));
+    }
+
+    var errBox = document.getElementById('ba-setup-error');
+    if (selectedChapters.length === 0) {
+        if (errBox) errBox.style.display = 'block';
+        return;
+    }
+    if (errBox) errBox.style.display = 'none';
+
+    activeQuizMode = 'ba';
+    var pool = (typeof baQuestions !== 'undefined') ? baQuestions : [];
+    
+    currentQuestionsList = [];
+    for (var j = 0; j < pool.length; j++) {
+        if (selectedChapters.indexOf(pool[j].chapter) !== -1) {
+            currentQuestionsList.push(pool[j]);
+        }
+    }
+
+    if (currentQuestionsList.length === 0) {
+        alert("No hay preguntas disponibles para las áreas seleccionadas de BABOK.");
+        return;
+    }
+
+    for (var i = currentQuestionsList.length - 1; i > 0; i--) {
+        var r = Math.floor(Math.random() * (i + 1));
+        var temp = currentQuestionsList[i];
+        currentQuestionsList[i] = currentQuestionsList[r];
+        currentQuestionsList[r] = temp;
+    }
+
+    initQuizSession();
+}
+
+// --- CONTROL DE SELECCIÓN: CONCEPTOS TÉCNICOS ---
+function toggleAllTechChapters(state) {
+    var cbs = document.querySelectorAll('.tech-chap-cb');
+    for (var i = 0; i < cbs.length; i++) {
+        cbs[i].checked = state;
+        var card = cbs[i].closest('.chapter-card');
+        if (card) {
+            if (state) card.classList.remove('unchecked');
+            else card.classList.add('unchecked');
+        }
+    }
+    updateTechSelectionCounter();
+}
+
+function updateTechSelectionCounter() {
+    var cbs = document.querySelectorAll('.tech-chap-cb');
+    var count = 0;
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) count++;
+        var card = cbs[i].closest('.chapter-card');
+        if (card) {
+            if (cbs[i].checked) card.classList.remove('unchecked');
+            else card.classList.add('unchecked');
+        }
+    }
+    var badge = document.getElementById('tech-sel-counter');
+    var errBox = document.getElementById('tech-setup-error');
+    if (badge) {
+        badge.innerText = count + " de 4 categorías seleccionadas";
+        badge.style.background = (count > 0) ? "#28a745" : "#dc3545";
+    }
+    if (errBox && count > 0) errBox.style.display = 'none';
+}
+
+function startTechQuiz() {
+    var cbs = document.querySelectorAll('.tech-chap-cb');
+    var selectedChapters = [];
+    for (var i = 0; i < cbs.length; i++) {
+        if (cbs[i].checked) selectedChapters.push(parseInt(cbs[i].value, 10));
+    }
+
+    var errBox = document.getElementById('tech-setup-error');
+    if (selectedChapters.length === 0) {
+        if (errBox) errBox.style.display = 'block';
+        return;
+    }
+    if (errBox) errBox.style.display = 'none';
+
+    activeQuizMode = 'tech';
+    var pool = (typeof techQuestions !== 'undefined') ? techQuestions : [];
+    
+    currentQuestionsList = [];
+    for (var j = 0; j < pool.length; j++) {
+        if (selectedChapters.indexOf(pool[j].chapter) !== -1) {
+            currentQuestionsList.push(pool[j]);
+        }
+    }
+
+    if (currentQuestionsList.length === 0) {
+        alert("No hay preguntas técnicas disponibles para las categorías seleccionadas.");
+        return;
+    }
+
+    for (var i = currentQuestionsList.length - 1; i > 0; i--) {
+        var r = Math.floor(Math.random() * (i + 1));
+        var temp = currentQuestionsList[i];
+        currentQuestionsList[i] = currentQuestionsList[r];
+        currentQuestionsList[r] = temp;
+    }
+
+    initQuizSession();
+}
+
+// --- INICIALIZACIÓN Y MOTOR DE SESIÓN ---
+function initQuizSession() {
+    questionStats = {};
+    for (var i = 0; i < currentQuestionsList.length; i++) {
+        var q = currentQuestionsList[i];
+        questionStats[q.id] = { attempts: 0, solved: false, solvedOn: 0 };
+    }
+
+    if (document.getElementById('quiz-setup')) document.getElementById('quiz-setup').style.display = 'none';
+    if (document.getElementById('ba-quiz-setup')) document.getElementById('ba-quiz-setup').style.display = 'none';
+    if (document.getElementById('tech-quiz-setup')) document.getElementById('tech-quiz-setup').style.display = 'none';
+    if (document.getElementById('quiz-summary')) document.getElementById('quiz-summary').style.display = 'none';
+    
+    var act = document.getElementById('quiz-active');
+    if (act) act.style.display = 'block';
+
+    var ind = document.getElementById('round-indicator');
+    if (ind) ind.innerText = "Ronda Principal (" + currentQuestionsList.length + " preguntas)";
+
+    currentQuestionIndex = 0;
+    loadQuestionToDom();
+    refreshScoreboard();
+}
+
+function returnToSetup() {
+    var act = document.getElementById('quiz-active');
+    var sum = document.getElementById('quiz-summary');
+    if (act) act.style.display = 'none';
+    if (sum) sum.style.display = 'none';
+
+    if (activeQuizMode === 'testing') {
+        var setup = document.getElementById('quiz-setup');
+        if (setup) setup.style.display = 'block';
+        updateSelectionCounter();
+    } else if (activeQuizMode === 'ba') {
+        var baSetup = document.getElementById('ba-quiz-setup');
+        if (baSetup) baSetup.style.display = 'block';
+        updateBaSelectionCounter();
+    } else if (activeQuizMode === 'tech') {
+        var techSetup = document.getElementById('tech-quiz-setup');
+        if (techSetup) techSetup.style.display = 'block';
+        updateTechSelectionCounter();
+    }
+}
+
+// --- RENDERIZADO DE PREGUNTAS Y BARAJADO ---
+function loadQuestionToDom() {
+    if (currentQuestionIndex >= currentQuestionsList.length) {
+        showRoundSummary();
+        return;
+    }
+
+    currentQuestion = currentQuestionsList[currentQuestionIndex];
+    answeredCurrent = false;
+
+    var box = document.getElementById('question-box');
+    var fb = document.getElementById('quiz-feedback');
+    var btnNext = document.getElementById('btn-next');
+    
+    if (fb) {
+        fb.style.display = 'none';
+        fb.innerHTML = '';
+    }
+    if (btnNext) btnNext.style.display = 'none';
+
+    var shuffledOpts = [];
+    for (var i = 0; i < currentQuestion.options.length; i++) {
+        shuffledOpts.push({ text: currentQuestion.options[i], originalIndex: i });
+    }
+    for (var j = shuffledOpts.length - 1; j > 0; j--) {
+        var k = Math.floor(Math.random() * (j + 1));
+        var temp = shuffledOpts[j];
+        shuffledOpts[j] = shuffledOpts[k];
+        shuffledOpts[k] = temp;
+    }
+    currentQuestion._currentShuffledOptions = shuffledOpts;
+
+    var html = '<span style="font-size:0.85rem; color:#666; font-weight:bold;">Pregunta ' + (currentQuestionIndex + 1) + ' de ' + currentQuestionsList.length + ' (' + currentQuestion.chapterTitle + ')</span>';
+    html += '<h3 style="margin-top:5px;">' + currentQuestion.q + '</h3>';
+
+    for (var m = 0; m < shuffledOpts.length; m++) {
+        html += '<button type="button" class="option" id="opt-' + m + '" onclick="checkAnswer(' + m + ')">' + shuffledOpts[m].text + '</button>';
+    }
+
+    if (box) box.innerHTML = html;
+}
+
+// --- VALIDACIÓN DE RESPUESTAS Y BLOQUEO VISUAL EN GRIS ---
+function checkAnswer(shuffledIdx) {
+    if (answeredCurrent) return;
+    
+    var qSt = questionStats[currentQuestion.id];
+    qSt.attempts++;
+
+    var chosen = currentQuestion._currentShuffledOptions[shuffledIdx];
+    var isCorrect = (chosen.originalIndex === currentQuestion.correct);
+
+    var fb = document.getElementById('quiz-feedback');
+    if (fb) fb.style.display = 'block';
+
+    if (isCorrect) {
+        answeredCurrent = true;
+        if (!qSt.solved) {
+            qSt.solved = true;
+            qSt.solvedOn = qSt.attempts;
+        }
+
+        // Deshabilitar y atenuar en gris todos los botones inmediatamente al acertar
+        var allOpts = document.querySelectorAll('.option');
+        for (var i = 0; i < allOpts.length; i++) {
+            allOpts[i].disabled = true;
+            allOpts[i].style.cursor = 'not-allowed';
+            var optObj = currentQuestion._currentShuffledOptions[i];
+            
+            if (optObj.originalIndex === currentQuestion.correct) {
+                allOpts[i].style.opacity = '1';
+                allOpts[i].style.background = '#d4edda';
+                allOpts[i].style.borderColor = '#28a745';
+            } else {
+                allOpts[i].style.opacity = '0.5';
+                allOpts[i].style.background = '#e2e3e5';
+                allOpts[i].style.borderColor = '#6c757d';
+            }
+        }
+
+        if (fb) {
+            fb.style.background = '#d4edda';
+            fb.style.color = '#155724';
+            fb.innerHTML = '<strong>✅ ¡Correcto!</strong> ' + currentQuestion.explanation;
+        }
+    } else {
+        // Bloquear y atenuar en gris únicamente la opción incorrecta elegida
+        var btnChosen = document.getElementById('opt-' + shuffledIdx);
+        if (btnChosen) {
+            btnChosen.disabled = true;
+            btnChosen.style.opacity = '0.5';
+            btnChosen.style.background = '#f8d7da';
+            btnChosen.style.borderColor = '#dc3545';
+            btnChosen.style.cursor = 'not-allowed';
+        }
+
+        if (fb) {
+            fb.style.background = '#f8d7da';
+            fb.style.color = '#721c24';
+            fb.innerHTML = '<strong>❌ Incorrecto (Intento #' + qSt.attempts + ').</strong> Puedes intentar con otra opción o avanzar.<div class="study-box" style="margin-top:8px;"><b>Referencia:</b> ' + currentQuestion.pageRef + '<br><b>Resumen:</b> ' + currentQuestion.summary.join(' ') + '</div>';
+        }
+    }
+
+    var btnNext = document.getElementById('btn-next');
+    if (btnNext) btnNext.style.display = 'inline-block';
+
+    refreshScoreboard();
+}
+
+function nextQuestion() {
+    currentQuestionIndex++;
+    loadQuestionToDom();
+}
+
+// --- CONTROL DE CONTADORES MUTUAMENTE EXCLUYENTES ---
+function refreshScoreboard() {
+    var cFirst = 0, cSecond = 0, cMore = 0, cWrong = 0;
+    
+    for (var id in questionStats) {
+        var st = questionStats[id];
+        if (st.solved) {
+            if (st.solvedOn === 1) cFirst++;
+            else if (st.solvedOn === 2) cSecond++;
+            else cMore++;
+        } else {
+            // ÚNICAMENTE cuenta como pendiente si NO está resuelta Y tiene al menos un intento fallido
+            if (st.attempts > 0 && !st.solved) cWrong++;
+        }
+    }
+
+    if (document.getElementById('stat-1st')) document.getElementById('stat-1st').innerText = cFirst;
+    if (document.getElementById('stat-2nd')) document.getElementById('stat-2nd').innerText = cSecond;
+    if (document.getElementById('stat-more')) document.getElementById('stat-more').innerText = cMore;
+    if (document.getElementById('stat-wrong')) document.getElementById('stat-wrong').innerText = cWrong;
+}
+
+// --- RESUMEN DE FIN DE RONDA Y REPASO DE ERRÓNEAS ---
+function showRoundSummary() {
+    var act = document.getElementById('quiz-active');
+    if (act) act.style.display = 'none';
+
+    var sum = document.getElementById('quiz-summary');
+    if (sum) sum.style.display = 'block';
+
+    var total = currentQuestionsList.length;
+    var solvedCount = 0;
+    var wrongList = [];
+
+    for (var i = 0; i < currentQuestionsList.length; i++) {
+        var q = currentQuestionsList[i];
+        var st = questionStats[q.id];
+        if (st.solved) {
+            solvedCount++;
+        } else {
+            wrongList.push(q);
+        }
+    }
+
+    var txt = document.getElementById('summary-text');
+    if (txt) {
+        txt.innerHTML = "Has completado la ronda. Preguntas dominadas: <b>" + solvedCount + " de " + total + "</b>.";
+    }
+
+    var details = document.getElementById('summary-details');
+    var btnRetry = document.getElementById('btn-retry-wrong');
+
+    if (wrongList.length > 0) {
+        if (btnRetry) btnRetry.style.display = 'inline-block';
+        if (details) {
+            var dHtml = "<h4>⚠️ Preguntas pendientes por dominar (" + wrongList.length + "):</h4><ul>";
+            for (var j = 0; j < wrongList.length; j++) {
+                dHtml += "<li>" + wrongList[j].q + "</li>";
+            }
+            dHtml += "</ul>";
+            details.innerHTML = dHtml;
+        }
+    } else {
+        if (btnRetry) btnRetry.style.display = 'none';
+        if (details) {
+            details.innerHTML = "🎉 <b>¡Excelente trabajo!</b> Has respondido correctamente todas las preguntas de la selección.";
+        }
+    }
+}
+
+function startRetryWrongRound() {
+    var wrongPool = [];
+    for (var i = 0; i < currentQuestionsList.length; i++) {
+        var q = currentQuestionsList[i];
+        if (!questionStats[q.id].solved) {
+            wrongPool.push(q);
+        }
+    }
+
+    if (wrongPool.length === 0) {
+        alert("¡No hay preguntas pendientes por repasar!");
+        return;
+    }
+
+    currentQuestionsList = wrongPool;
+    var sum = document.getElementById('quiz-summary');
+    if (sum) sum.style.display = 'none';
+
+    var act = document.getElementById('quiz-active');
+    if (act) act.style.display = 'block';
+
+    var ind = document.getElementById('round-indicator');
+    if (ind) ind.innerText = "🔄 Ronda de Repaso (Erróneas: " + currentQuestionsList.length + ")";
+
+    currentQuestionIndex = 0;
+    loadQuestionToDom();
+    refreshScoreboard();
+}
