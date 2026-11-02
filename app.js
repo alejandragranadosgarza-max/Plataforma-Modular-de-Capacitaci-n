@@ -1,461 +1,477 @@
-// ==========================================
-// LÓGICA CENTRAL DE LOS CUESTIONARIOS (MULTI-MÓDULO)
-// ==========================================
-var activeQueue = [];
-var currentIndex = 0;
-var currentQuestion = null;
-var questionStats = {};
-var roundNumber = 1;
-var wrongQueue = [];
-var activeQuizType = 'testing'; // 'testing', 'ba', 'tech', 'scrum', 'ux'
-var answeredCurrent = false;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Modular de Capacitación y Evaluación de Historias de usuario o Narrativas</title>
+    <link rel="stylesheet" href="style.css">
 
-// --- CONTROL DE SELECCIÓN GENERAL (GENÉRICO) ---
-function toggleAllChapters(state, prefix) {
-    var cbs = document.querySelectorAll('.' + prefix + '-chap-cb');
-    for (var i = 0; i < cbs.length; i++) {
-        cbs[i].checked = state;
-        var card = cbs[i].closest('.chapter-card');
-        if (card) {
-            if (state) card.classList.remove('unchecked');
-            else card.classList.add('unchecked');
-        }
-    }
-    updateSelectionCounter(prefix);
-}
+    <!-- Importar Mammoth.js desde CDN para leer archivos .docx en el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
-function updateSelectionCounter(prefix) {
-    var cbs = document.querySelectorAll('.' + prefix + '-chap-cb');
-    var count = 0;
-    var total = cbs.length;
-    for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) count++;
-        var card = cbs[i].closest('.chapter-card');
-        if (card) {
-            if (cbs[i].checked) card.classList.remove('unchecked');
-            else card.classList.add('unchecked');
-        }
-    }
-    var badge = document.getElementById(prefix + '-sel-counter');
-    var errBox = document.getElementById(prefix + '-setup-error');
-    if (badge) {
-        badge.innerText = count + " de " + total + " seleccionados";
-        badge.style.background = (count > 0) ? "#28a745" : "#dc3545";
-    }
-    if (errBox && count > 0) errBox.style.display = 'none';
-}
+    <!-- Enlace al manifiesto de la PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6b21a8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-// --- INICIO DE CUESTIONARIOS POR MÓDULO ---
+</head>
+<body>
 
-// 1. MÓDULO TESTING
-function startQuizFromSetup() {
-    activeQuizType = 'testing';
-    var cbs = document.querySelectorAll('.testing-chap-cb');
-    var selectedChapters = [];
-    for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) {
-            selectedChapters.push(parseInt(cbs[i].value, 10));
-        }
-    }
-    
-    var errBox = document.getElementById('testing-setup-error');
-    if (selectedChapters.length === 0) {
-        if (errBox) errBox.style.display = 'block';
-        return;
-    }
-    if (errBox) errBox.style.display = 'none';
+<header>
+    <h1>Plataforma Modular de Capacitación y Evaluación</h1>
+</header>
 
-    var pool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
-    runQuizPool(pool, selectedChapters);
-}
+<nav>
+    <button type="button" class="active" onclick="switchMainTab('tab-training', this)">Módulo 1: Capacitación</button>
+    <button type="button" id="btn-mod-2" style="display: none;" onclick="switchMainTab('tab-lab', this)">Módulo 2: Laboratorio ATDD</button>
+    <button type="button" id="btn-mod-3" style="display: none;" onclick="switchMainTab('tab-narrative', this)">Módulo 3: Evaluación de Narrativas</button>
+</nav>
 
-// 2. MÓDULO BUSINESS ANALYSIS (BABOK)
-function startBaQuizFromSetup() {
-    activeQuizType = 'ba';
-    var cbs = document.querySelectorAll('.ba-chap-cb');
-    var selectedChapters = [];
-    for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) {
-            selectedChapters.push(parseInt(cbs[i].value, 10));
-        }
-    }
-    
-    var errBox = document.getElementById('ba-setup-error');
-    if (selectedChapters.length === 0) {
-        if (errBox) errBox.style.display = 'block';
-        return;
-    }
-    if (errBox) errBox.style.display = 'none';
+<div class="container">
 
-    var pool = (typeof baQuestions !== 'undefined') ? baQuestions : [];
-    runQuizPool(pool, selectedChapters);
-}
+    <!-- MÓDULO 1: CAPACITACIÓN -->
+    <div id="tab-training" class="module active">
+        <h2>Cuestionario de evaluación</h2>
+        <p>Selecciona la disciplina y los capítulos o áreas de conocimiento que deseas evaluar:</p>
 
-// 3. MÓDULO CONCEPTOS TÉCNICOS
-function startTechQuizFromSetup() {
-    activeQuizType = 'tech';
-    var cbs = document.querySelectorAll('.tech-chap-cb');
-    var selectedChapters = [];
-    for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) {
-            selectedChapters.push(parseInt(cbs[i].value, 10));
-        }
-    }
-    
-    var errBox = document.getElementById('tech-setup-error');
-    if (selectedChapters.length === 0) {
-        if (errBox) errBox.style.display = 'block';
-        return;
-    }
-    if (errBox) errBox.style.display = 'none';
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn" onclick="switchCapSubModule('sub-testing')">🧪 Testing (ISTQB v4.0)</button>
+            <button type="button" class="btn btn-accent" onclick="switchCapSubModule('sub-ba')">📊 Business Analysis (BABOK v3)</button>
+            <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="switchCapSubModule('sub-tech')">⚙️ Cuestionario de Conceptos Técnicos</button>
+            <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="switchCapSubModule('sub-scrum')">📋 Cuestionario SCRUM (Guía Oficial)</button>
+            <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="switchCapSubModule('sub-ux')">🎨 Diseño UX/UI</button> <!-- 👈 Nuevo botón UX -->
+        </div>
 
-    var pool = (typeof techQuestions !== 'undefined') ? techQuestions : [];
-    runQuizPool(pool, selectedChapters);
-}
+        <!-- Submódulo Testing -->
+        <div id="sub-testing" class="cap-submodule">
+            <div id="quiz-setup" class="card">
+                <h3>Selecciona los capítulos para tu cuestionario (Niveles K1 y K2)</h3>
+                <p style="font-size: 0.82rem; color: #555; margin-top: -5px; margin-bottom: 12px;">
+                    ℹ️ <b>Nivel K1 (Recordar):</b> Reconocimiento y recuerdo de conceptos. &nbsp;|&nbsp; 
+                    <b>Nivel K2 (Comprender):</b> Explicar, clasificar y ejemplificar conceptos.
+                </p>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'testing')">Marcar Todos</button>
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'testing')">Desmarcar Todos</button>
+                   <span id="testing-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
+                </div>
+                
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-1" class="testing-chap-cb" value="1" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 1:</b> Fundamentos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-2" class="testing-chap-cb" value="2" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 2:</b> SDLC y Pruebas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-3" class="testing-chap-cb" value="3" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 3:</b> Pruebas Estáticas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-4" class="testing-chap-cb" value="4" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 4:</b> Análisis y Diseño <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-4">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-5" class="testing-chap-cb" value="5" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 5:</b> Gestión <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-5">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-6" class="testing-chap-cb" value="6" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 6:</b> Herramientas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-6">(...) </small></span>
+                    </label>
+                </div>
 
-// 4. MÓDULO SCRUM (GUÍA OFICIAL) 
-function startScrumQuizFromSetup() {
-    activeQuizType = 'scrum';
-    var cbs = document.querySelectorAll('.scrum-chap-cb');
-    var selectedChapters = [];
-    for (var i = 0; i < cbs.length; i++) {
-        if (cbs[i].checked) {
-            selectedChapters.push(parseInt(cbs[i].value, 10));
-        }
-    }
-    
-    var errBox = document.getElementById('scrum-setup-error');
-    if (selectedChapters.length === 0) {
-        if (errBox) errBox.style.display = 'block';
-        return;
-    }
-    if (errBox) errBox.style.display = 'none';
+                <div id="testing-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
+                </div>
 
-    var pool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
-    runQuizPool(pool, selectedChapters);
-}
+                <button type="button" class="btn" onclick="startQuizFromSetup()">Iniciar Cuestionario Testing</button>
+            </div>
+        </div>
 
-// 5. MÓDULO UX/UI
-function startUxQuizFromSetup() {
-        activeQuizType = 'ux';
-        var cbs = document.querySelectorAll('.ux-chap-cb');
-        var selectedChapters = [];
-        for (var i = 0; i < cbs.length; i++) {
-            if (cbs[i].checked) {
-                selectedChapters.push(parseInt(cbs[i].value, 10));
-            }
-        }
+       <!-- Submódulo Business Analysis -->
+        <div id="sub-ba" class="cap-submodule" style="display:none;">
+            <div id="ba-quiz-setup" class="card">
+                <h3>Selecciona los capítulos para tu cuestionario (BABOK v3)</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'ba')">Marcar Todos</button>
+                  <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'ba')">Desmarcar Todos</button>
+                  <span id="ba-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
+                </div>
+                
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ba-chap-1" class="ba-chap-cb" value="1" onchange="updateSelectionCounter('ba')"> 
+                        <span><b>Cap. 1:</b> BACCM y Fundamentos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ba-chap-2" class="ba-chap-cb" value="2" onchange="updateSelectionCounter('ba')"> 
+                        <span><b>Cap. 2:</b> Planificación y Seguimiento <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ba-chap-3" class="ba-chap-cb" value="3" onchange="updateSelectionCounter('ba')"> 
+                        <span><b>Cap. 3:</b> Obtención y Colaboración <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ba-chap-4" class="ba-chap-cb" value="4" onchange="updateSelectionCounter('ba')"> 
+                        <span><b>Cap. 4:</b> Gestión Ciclo de Vida <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-4">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ba-chap-5" class="ba-chap-cb" value="5" onchange="updateSelectionCounter('ba')"> 
+                        <span><b>Cap. 5:</b> Análisis de Estrategia <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-5">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ba-chap-6" class="ba-chap-cb" value="6" onchange="updateSelectionCounter('ba')"> 
+                        <span><b>Cap. 6:</b> Análisis y Diseño (RADD) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ba-chap-6">(...) </small></span>
+                    </label>
+                </div>
+
+                <div id="ba-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
+                </div>
+
+                <button type="button" class="btn btn-accent" onclick="startBaQuizFromSetup()">Iniciar Cuestionario BA</button>
+            </div>
+        </div>
+
+        <!-- Submódulo Conceptos Técnicos -->
+        <div id="sub-tech" class="cap-submodule" style="display:none;">
+            <div id="tech-quiz-setup" class="card">
+                <h3>Selecciona las categorías técnicas a evaluar</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'tech')">Marcar Todos</button>
+                    <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'tech')">Desmarcar Todos</button>
+                    <span id="tech-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
+                </div>
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="tech-1" class="tech-chap-cb" value="1" onchange="updateSelectionCounter('tech')"> 
+                        <span><b>Cat. 1:</b> Arquitectura y Redes <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="tech-2" class="tech-chap-cb" value="2" onchange="updateSelectionCounter('tech')"> 
+                        <span><b>Cat. 2:</b> SQL (Básico a Avanzado) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="tech-3" class="tech-chap-cb" value="3" onchange="updateSelectionCounter('tech')"> 
+                        <span><b>Cat. 3:</b> Jira y Confluence <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="tech-4" class="tech-chap-cb" value="4" onchange="updateSelectionCounter('tech')"> 
+                        <span><b>Cat. 4:</b> IA, Selenium y DevOps <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-tech-4">(...) </small></span>
+                    </label>
+                </div>
+
+                <div id="tech-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos una categoría técnica para iniciar.
+                </div>
+
+                <button type="button" class="btn" style="background: var(--accent-cyan); color: var(--text-dark);" onclick="startTechQuizFromSetup()">Iniciar Cuestionario Técnico</button>
+            </div>
+        </div>
+
+       <!-- Submódulo Scrum -->
+        <div id="sub-scrum" class="cap-submodule" style="display:none;">
+            <div id="scrum-quiz-setup" class="card">
+                <h3>Selecciona los roles o áreas para tu cuestionario de Scrum</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'scrum')">Marcar Todos</button>
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'scrum')">Desmarcar Todos</button>
+                   <span id="scrum-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 áreas seleccionadas</span>
+                </div>
+
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-1" class="scrum-chap-cb" value="1" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 1:</b> Dueño de Producto (PO) <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-2" class="scrum-chap-cb" value="2" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 2:</b> Equipo de Desarrollo <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-3" class="scrum-chap-cb" value="3" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 3:</b> Scrum Master <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="scrum-chap-4" class="scrum-chap-cb" value="4" onchange="updateSelectionCounter('scrum')"> 
+                        <span><b>Cap. 4:</b> Eventos y Artefactos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-scrum-chap-4">(...) </small></span>
+                    </label>
+                </div>
+
+                <div id="scrum-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos un área para iniciar.
+                </div>
+
+                <button type="button" class="btn" style="background: #6b21a8; color: white;" onclick="startScrumQuizFromSetup()">Iniciar Cuestionario Scrum</button>
+            </div>
+        </div>
+
+<!-- Submódulo UX -->
+        <div id="sub-ux" class="cap-submodule" style="display:none;">
+            <div id="ux-quiz-setup" class="card">
+                <h3>Selecciona los capítulos o áreas para tu cuestionario de UX/UI</h3>
+                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(true, 'ux')">Marcar Todos</button>
+                   <button type="button" class="btn-outline" onclick="toggleAllChapters(false, 'ux')">Desmarcar Todos</button>
+                   <span id="ux-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 4 capítulos seleccionados</span>
+                </div>
+
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-1" class="ux-chap-cb" value="1" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 1:</b> UX & Research <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-2" class="ux-chap-cb" value="2" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 2:</b> Arquitectura e Interacción <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-3" class="ux-chap-cb" value="3" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 3:</b> Prototipado y UI <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="ux-chap-4" class="ux-chap-cb" value="4" onchange="updateSelectionCounter('ux')"> 
+                        <span><b>Cap. 4:</b> Pruebas de Usabilidad y Métricas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-ux-chap-4">(...) </small></span>
+                    </label>
+                </div>
+
+                <div id="ux-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
+                    ⚠️ Debes seleccionar al menos un capítulo para iniciar.
+                </div>
+
+                <button type="button" class="btn" style="background: #ec4899; color: white;" onclick="startUxQuizFromSetup()">Iniciar Cuestionario UX</button>
+            </div>
+        </div>
+
+        <!-- ZONA ACTIVA DE CUESTIONARIOS -->
+        <div id="quiz-active" style="display:none; margin-top: 15px;">
+            <div class="scoreboard">
+                <div class="score-item">✅ 1er Chance<span id="stat-1st">0</span></div>
+                <div class="score-item">🎯 2do Chance<span id="stat-2nd">0</span></div>
+                <div class="score-item">🔄 3+ Chances<span id="stat-more">0</span></div>
+                <div class="score-item">❌ Pendientes<span id="stat-wrong">0</span></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <b id="round-indicator" style="color:#6b21a8;">Ronda Principal</b>
+                <button type="button" class="btn-outline" onclick="returnToSetup()">⚙️ Cambiar Selección</button>
+            </div>
+            <div id="question-box" class="card"></div>
+            <div id="quiz-feedback" class="feedback"></div>
+            <button type="button" id="btn-next" class="btn" onclick="nextQuestion()" style="display:none;">Siguiente Pregunta ➔</button>
+        </div>
+
+        <!-- RESUMEN DE FIN DE RONDA -->
+        <div id="quiz-summary" class="card" style="display:none; margin-top: 15px;">
+            <h3>🏁 Resumen de Fin de Ronda</h3>
+            <p id="summary-text"></p>
+            <div id="summary-details" class="study-box"></div>
+            <div style="margin-top:15px;">
+                <button type="button" id="btn-retry-wrong" class="btn btn-accent" onclick="startRetryWrongRound()">🔄 Repasar solo preguntas erróneas</button>
+                <button type="button" class="btn" onclick="returnToSetup()">🔁 Volver a Configurar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 2: LABORATORIO ATDD -->
+    <div id="tab-lab" class="module">
+        <h2>Laboratorio ATDD - Generación y Validación de Historias de Usuario</h2>
+        <p>Diseña tus Historias de Usuario bajo el estándar INVEST / 3C y valida criterios de aceptación (Positivo, Negativo y No Funcional):</p>
         
-        var errBox = document.getElementById('ux-setup-error');
-        if (selectedChapters.length === 0) {
-            if (errBox) errBox.style.display = 'block';
+        <div class="card">
+            <label><b>Nombre del Proyecto Global:</b></label>
+            <input type="text" id="atdd-project" placeholder="Ej. Portal E-Commerce Corporativo" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+            
+            <div id="stories-container"></div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="btn" onclick="addStoryForm()">➕ Agregar otra Historia de Usuario</button>
+                <button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar Historias (INVEST / 3C)</button>
+                <button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportToExcelCSV()">📥 Exportar CSV (Excel / Jira)</button>
+                <button type="button" class="btn" style="background: #6c757d; color: white;" onclick="exportToJiraTXT()">📄 Exportar TXT Jira</button>
+                <label class="btn btn-outline" style="cursor: pointer; display: inline-block; margin: 0;">
+                    📁 Importar Archivo <input type="file" id="import-file" style="display: none;" onchange="handleFileImport(event)">
+                </label>
+            </div>
+        </div>
+
+        <div id="atdd-output" class="card" style="display:none; margin-top: 15px;"></div>
+    </div>
+
+    <!-- MÓDULO 3: EVALUACIÓN DE NARRATIVAS (CASCADA) -->
+    <div id="tab-narrative" class="module">
+        <div style="max-width: 1000px; margin: 0 auto;">
+            <h2>Evaluación y Gestión de Narrativas (Metodologías Tradicionales / Cascada)</h2>
+            <p>Valida especificaciones formales sin ambigüedades, entradas, salidas y criterios claros para Desarrollo y QA, generando carpetas físicas y documentos editables:</p>
+            
+            <div class="card" style="padding: 25px;">
+                <label style="display: block; margin-bottom: 8px;"><b>Nombre del Proyecto:</b></label>
+                <input type="text" id="nar-project" placeholder="Ej. Sistema de Nómina y Finanzas" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;">
+                
+                <div style="margin-bottom: 20px; background: #f3f0ff; padding: 15px; border-radius: 6px; border: 1px dashed #7c3aed;">
+    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Plantilla Corporativa (.docx o .doc):</b></label>
+    
+    <!-- Se actualiza el accept para permitir .docx y .doc -->
+                <input type="file" id="word-catalog-file" 
+                    accept=".docx, .doc, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                    onchange="loadWordTemplate(event)" style="font-size: 0.85rem;">
+                    <small style="display: block; color: #6b7280; margin-top: 4px;">Sube la plantilla oficial de Word (.docx o .doc) de tu empresa para extraer objetivos y necesidades automáticamente.</small>
+                </div>
+
+                <div id="narratives-container"></div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento Funcional</button>
+                    <button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Validar Narrativas (SRS)</button>
+                    <button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportProjectFoldersAndFiles()">📁 Descargar Script Windows y Doc Word</button>
+                    <button type="button" class="btn" style="background: #17a2b8; color: white;" onclick="exportProjectJSON()">📤 Exportar Proyecto (JSON)</button>
+                    <label class="btn" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0;">
+                        📥 Importar Proyecto <input type="file" id="import-project-file" accept=".json" style="display: none;" onchange="importProjectJSON(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div id="nar-output" class="card" style="display:none; margin-top: 20px; padding: 25px;"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Carga de Archivos de Preguntas y Lógica Principal -->
+<script src="questions_testing.js"></script>
+<script src="questions_ba.js"></script>
+<script src="questions_tech.js"></script>
+<script src="questions_scrum.js"></script>
+<script src="questions_ux.js"></script>
+<script src="app.js"></script>
+<script src="atdd_lab.js"></script>
+<script src="narrative_eval_lab.js"></script>
+
+<script>
+    function switchMainTab(tabId, btn) {
+        if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && localStorage.getItem("admin_auth") !== "true") {
+            alert("Acceso restringido. Debes iniciar sesión como administradora.");
             return;
         }
-        if (errBox) errBox.style.display = 'none';
 
-        var pool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
-        runQuizPool(pool, selectedChapters);
-    }
-// --- FILTRADO Y EJECUCIÓN CENTRALIZADA ---
-function runQuizPool(pool, selectedChapters) {
-    var tempPool = [];
-    for (var j = 0; j < pool.length; j++) {
-        var q = pool[j];
-        var chapNum = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
-        if (selectedChapters.indexOf(chapNum) !== -1) {
-            tempPool.push(q);
-        }
-    }
-
-    if (tempPool.length === 0) {
-        alert("No hay preguntas disponibles para los capítulos seleccionados.");
-        return;
-    }
-
-    // Barajar con Fisher-Yates
-    for (var i = tempPool.length - 1; i > 0; i--) {
-        var r = Math.floor(Math.random() * (i + 1));
-        var temp = tempPool[i];
-        tempPool[i] = tempPool[r];
-        tempPool[r] = temp;
-    }
-
-    activeQueue = tempPool; 
-    initQuizSession();
-}
-
-// --- CONTROL GENERAL DE SESIÓN ---
-function initQuizSession() {
-    questionStats = {};
-    for (var k = 0; k < activeQueue.length; k++) {
-        questionStats[activeQueue[k].id] = { attempts: 0, solved: false, solvedOn: 0 };
-    }
-
-    roundNumber = 1;
-    currentIndex = 0;
-    
-    var setups = document.querySelectorAll('.cap-submodule');
-    for (var i = 0; i < setups.length; i++) {
-        setups[i].style.display = 'none';
-    }
-    
-    var sum = document.getElementById('quiz-summary');
-    if(sum) sum.style.display = 'none';
-    
-    document.getElementById('quiz-active').style.display = 'block';
-    
-    refreshScoreboard();
-    renderCurrentQuestion();
-}
-
-function returnToSetup() {
-    document.getElementById('quiz-active').style.display = 'none';
-    document.getElementById('quiz-summary').style.display = 'none';
-    
-    if (activeQuizType === 'testing') {
-        document.getElementById('sub-testing').style.display = 'block';
-        updateSelectionCounter('testing');
-    } else if (activeQuizType === 'ba') {
-        document.getElementById('sub-ba').style.display = 'block';
-        updateSelectionCounter('ba');
-    } else if (activeQuizType === 'tech') {
-        document.getElementById('sub-tech').style.display = 'block';
-        updateSelectionCounter('tech');
-    } else if (activeQuizType === 'scrum') {
-        document.getElementById('sub-scrum').style.display = 'block';
-        updateSelectionCounter('scrum');
-    } else if (activeQuizType === 'ux') {
-        document.getElementById('sub-ux').style.display = 'block';
-        updateSelectionCounter('ux');
-    }
-}
-
-function refreshScoreboard() {
-    var c1 = 0, c2 = 0, cm = 0, cw = 0;
-    var keys = Object.keys(questionStats);
-    for (var i = 0; i < keys.length; i++) {
-        var st = questionStats[keys[i]];
-        if (st.solved) {
-            if (st.solvedOn === 1) c1++;
-            else if (st.solvedOn === 2) c2++;
-            else cm++;
-        } else {
-            if (st.attempts > 0 && !st.solved) {
-                cw++;
-            }
-        }
-    }
-    if(document.getElementById('stat-1st')) document.getElementById('stat-1st').innerText = c1;
-    if(document.getElementById('stat-2nd')) document.getElementById('stat-2nd').innerText = c2;
-    if(document.getElementById('stat-more')) document.getElementById('stat-more').innerText = cm;
-    if(document.getElementById('stat-wrong')) document.getElementById('stat-wrong').innerText = cw;
-}
-
-function renderCurrentQuestion() {
-    if (currentIndex >= activeQueue.length) {
-        showRoundSummary();
-        return;
-    }
-
-    currentQuestion = activeQueue[currentIndex];
-    answeredCurrent = false;
-    var box = document.getElementById('question-box');
-    var fb = document.getElementById('quiz-feedback');
-    var btnNext = document.getElementById('btn-next');
-    
-    fb.style.display = 'none';
-    fb.innerHTML = '';
-    btnNext.style.display = 'none';
-
-    // Compatibilidad para títulos y textos (Testing/BA/Tech/UX vs Scrum)
-    var chapTitle = currentQuestion.chapterTitle || (activeQuizType === 'ux' ? ("UX - Cap. " + currentQuestion.chapter) : ("Scrum - Área / Rol " + currentQuestion.chapter));
-    var qText = currentQuestion.q || currentQuestion.question || currentQuestion.pregunta || "";
-    var rawOptions = currentQuestion.options || currentQuestion.opciones || [];
-    var explanationText = currentQuestion.explanation || currentQuestion.explicacion || "";
-    var correctIdx = (currentQuestion.correct !== undefined) ? currentQuestion.correct : (currentQuestion.answer !== undefined ? currentQuestion.answer : currentQuestion.correcta);
-
-    var html = '<span class="badge-cap">' + chapTitle + '</span>';
-    html += '<h3 style="margin-top:10px;">' + qText + '</h3>';
-
-    var indexedOptions = [];
-    for (var i = 0; i < rawOptions.length; i++) {
-        indexedOptions.push({ text: rawOptions[i], originalIndex: i });
-    }
-    for (var i = indexedOptions.length - 1; i > 0; i--) {
-        var r = Math.floor(Math.random() * (i + 1));
-        var temp = indexedOptions[i];
-        indexedOptions[i] = indexedOptions[r];
-        indexedOptions[r] = temp;
-    }
-
-    currentQuestion._currentShuffledOptions = indexedOptions;
-    currentQuestion._resolvedCorrectIndex = correctIdx;
-    currentQuestion._resolvedExplanation = explanationText;
-
-    for (var j = 0; j < indexedOptions.length; j++) {
-        html += '<button type="button" class="option" onclick="checkAnswer(' + j + ')" id="opt-' + j + '">' + indexedOptions[j].text + '</button>';
-    }
-
-    box.innerHTML = html;
-    
-    var indicatorText = "Ronda " + roundNumber;
-    if (activeQuizType === 'scrum') indicatorText = "Cuestionario Scrum (Guía Oficial)";
-    else if (activeQuizType === 'ux') indicatorText = "Cuestionario UX/UI";
-
-    document.getElementById('round-indicator').innerText = indicatorText + " - Pregunta " + (currentIndex + 1) + " de " + activeQueue.length;
-}
-
-function checkAnswer(shuffledIdx) {
-    if (answeredCurrent) return;
-    
-    var qSt = questionStats[currentQuestion.id];
-    qSt.attempts++;
-
-    var chosen = currentQuestion._currentShuffledOptions[shuffledIdx];
-    var isCorrect = (chosen.originalIndex === currentQuestion._resolvedCorrectIndex);
-
-    var fb = document.getElementById('quiz-feedback');
-    fb.style.display = 'block';
-
-    if (isCorrect) {
-        answeredCurrent = true;
-        if (!qSt.solved) {
-            qSt.solved = true;
-            qSt.solvedOn = qSt.attempts;
-        }
-
-        var allOpts = document.querySelectorAll('.option');
-        for (var i = 0; i < allOpts.length; i++) {
-            allOpts[i].disabled = true;
-            allOpts[i].style.cursor = 'not-allowed';
-            var optObj = currentQuestion._currentShuffledOptions[i];
-            if (optObj.originalIndex === currentQuestion._resolvedCorrectIndex) {
-                allOpts[i].style.opacity = '1';
-                allOpts[i].style.background = '#d4edda';
-                allOpts[i].style.borderColor = '#28a745';
-            } else {
-                allOpts[i].style.opacity = '0.5';
-                allOpts[i].style.background = '#e2e3e5';
-                allOpts[i].style.borderColor = '#6c757d';
-            }
-        }
-
-        fb.style.background = '#d4edda';
-        fb.style.color = '#155724';
-        fb.innerHTML = '<strong>✅ ¡Correcto!</strong> ' + currentQuestion._resolvedExplanation;
-        document.getElementById('btn-next').style.display = 'inline-block';
-    } else {
-        var btnChosen = document.getElementById('opt-' + shuffledIdx);
-        if (btnChosen) {
-            btnChosen.disabled = true;
-            btnChosen.style.opacity = '0.5';
-            btnChosen.style.background = '#f8d7da';
-            btnChosen.style.borderColor = '#dc3545';
-            btnChosen.style.cursor = 'not-allowed';
-        }
-
-        var refText = currentQuestion.pageRef || (activeQuizType === 'ux' ? "Fundamentos de UX/UI" : "Guía de Scrum Oficial");
-        var sumText = currentQuestion.summary ? currentQuestion.summary.join(' ') : currentQuestion._resolvedExplanation;
-
-        fb.style.background = '#f8d7da';
-        fb.style.color = '#721c24';
-        fb.innerHTML = '<strong>❌ Incorrecto (Intento #' + qSt.attempts + ').</strong> Puedes intentar con otra opción o avanzar.<div class="study-box"><b>Referencia:</b> ' + refText + '<br><b>Resumen:</b> ' + sumText + '</div>';
+        var mods = document.querySelectorAll('.container > .module');
+        for (var i = 0; i < mods.length; i++) mods[i].classList.remove('active');
+        var btns = document.querySelectorAll('nav button');
+        for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
         
-        document.getElementById('btn-next').style.display = 'inline-block';
+        var targetMod = document.getElementById(tabId);
+        if (targetMod) targetMod.classList.add('active');
+        if (btn) btn.classList.add('active');
     }
 
-    refreshScoreboard();
-}
+    function switchCapSubModule(subId) {
+        var subs = document.querySelectorAll('.cap-submodule');
+        for (var i = 0; i < subs.length; i++) subs[i].style.display = 'none';
+        var targetSub = document.getElementById(subId);
+        if (targetSub) targetSub.style.display = 'block';
+        
+        var act = document.getElementById('quiz-active');
+        var sum = document.getElementById('quiz-summary');
+        if(act) act.style.display = 'none';
+        if(sum) sum.style.display = 'none';
+        
+        if(subId === 'sub-testing') {
+            updateSelectionCounter('testing');
+        } else if(subId === 'sub-ba') {
+            updateSelectionCounter('ba');
+        } else if(subId === 'sub-tech') {
+            updateSelectionCounter('tech');
+        } else if(subId === 'sub-scrum') {
+            updateSelectionCounter('scrum');
+        } else if(subId === 'sub-ux') {
+            updateSelectionCounter('ux');
+        }
+        updateAllChapterCounts();
+    }
 
-function nextQuestion() {
-    currentIndex++;
-    renderCurrentQuestion();
-}
+    function updateAllChapterCounts() {
+        // Conteo para Testing
+        var tPool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
+        var tCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
+        for (var i = 0; i < tPool.length; i++) {
+            var q = tPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (tCounts[ch] !== undefined) tCounts[ch]++;
+        }
+        for (var c = 1; c <= 6; c++) {
+            var el = document.getElementById('count-chap-' + c);
+            if (el) el.innerText = "(" + tCounts[c] + " preguntas)";
+        }
 
-function showRoundSummary() {
-    document.getElementById('quiz-active').style.display = 'none';
-    var sumCard = document.getElementById('quiz-summary');
-    sumCard.style.display = 'block';
+        // Conteo para Business Analysis (BA)
+        var bPool = (typeof baQuestions !== 'undefined') ? baQuestions : [];
+        var bCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
+        for (var i = 0; i < bPool.length; i++) {
+            var q = bPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (bCounts[ch] !== undefined) bCounts[ch]++;
+        }
+        for (var c = 1; c <= 6; c++) {
+            var el = document.getElementById('count-ba-chap-' + c);
+            if (el) el.innerText = "(" + bCounts[c] + " preguntas)";
+        }
 
-    wrongQueue = [];
-    var keys = Object.keys(questionStats);
-    for (var i = 0; i < keys.length; i++) {
-        var qId = keys[i];
-        if (!questionStats[qId].solved) {
-            for (var j = 0; j < activeQueue.length; j++) {
-                if (activeQueue[j].id == qId) {
-                    wrongQueue.push(activeQueue[j]);
-                    break;
-                }
-            }
+        // Conteo para Conceptos Técnicos
+        var techPool = (typeof techQuestions !== 'undefined') ? techQuestions : [];
+        var techCounts = {1:0, 2:0, 3:0, 4:0};
+        for (var i = 0; i < techPool.length; i++) {
+            var q = techPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (techCounts[ch] !== undefined) techCounts[ch]++;
+        }
+        for (var c = 1; c <= 4; c++) {
+            var el = document.getElementById('count-tech-' + c);
+            if (el) el.innerText = "(" + techCounts[c] + " preguntas)";
+        }
+
+        // Conteo para Scrum
+        var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
+        var scrumCounts = {1:0, 2:0, 3:0, 4:0};
+        for (var i = 0; i < scrumPool.length; i++) {
+            var q = scrumPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (scrumCounts[ch] !== undefined) scrumCounts[ch]++;
+        }
+        for (var c = 1; c <= 4; c++) {
+            var el = document.getElementById('count-scrum-chap-' + c);
+            if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
+        }
+       // Conteo para UX
+        var uxPool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
+        var uxCounts = {1:0, 2:0, 3:0, 4:0};
+        for (var i = 0; i < uxPool.length; i++) {
+            var q = uxPool[i];
+            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            if (uxCounts[ch] !== undefined) uxCounts[ch]++;
+        }
+        for (var c = 1; c <= 4; c++) {
+            var el = document.getElementById('count-ux-chap-' + c);
+            if (el) el.innerText = "(" + uxCounts[c] + " preguntas)";
         }
     }
 
-    var textEl = document.getElementById('summary-text');
-    var detailsEl = document.getElementById('summary-details');
-    var btnRetry = document.getElementById('btn-retry-wrong');
-
-    if (wrongQueue.length === 0) {
-        textEl.innerHTML = "🎉 <b>¡Excelente trabajo!</b> Has respondido correctamente todas las preguntas de la ronda.";
-        detailsEl.innerHTML = "Dominio completo de los conceptos evaluados en esta sesión.";
-        if(btnRetry) btnRetry.style.display = 'none';
-    } else {
-        textEl.innerHTML = "⚠️ Has completado la ronda con <b>" + wrongQueue.length + " preguntas pendientes</b> por dominar.";
-        detailsEl.innerHTML = "Puedes repasar únicamente los reactivos en los que tuviste errores para reforzar tu aprendizaje.";
-        if(btnRetry) btnRetry.style.display = 'inline-block';
-    }
-}
-
-function startRetryWrongRound() {
-    if (wrongQueue.length === 0) return;
-    activeQueue = wrongQueue;
-    roundNumber++;
-    currentIndex = 0;
-    
-    document.getElementById('quiz-summary').style.display = 'none';
-    document.getElementById('quiz-active').style.display = 'block';
-    
-    for (var k = 0; k < activeQueue.length; k++) {
-        if (questionStats[activeQueue[k].id]) {
-            questionStats[activeQueue[k].id].attempts = 0;
-            questionStats[activeQueue[k].id].solved = false;
-        }
-    }
-    refreshScoreboard();
-    renderCurrentQuestion();
-}
-
-// ==========================================
-// CONTROL DE ACCESO ADMIN
-// ==========================================
-function verificarAccesoAdmin(event) {
-    if (event) {
-        event.preventDefault();
-    }
-    
-    var password = prompt("Ingresa la contraseña de administrador:");
-    var passwordReal = "HolaAGG"; 
-    
-    if (password === passwordReal) {
-        sessionStorage.setItem("admin_auth", "true");
-        localStorage.setItem("admin_auth", "true");
-        aplicarSeguridadModulos();
-        alert("¡Acceso concedido! Módulos 2 y 3 desbloqueados.");
-    } else if (password !== null) {
-        alert("Contraseña incorrecta.");
-    }
-}
-
-function aplicarSeguridadModulos() {
-    var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
-    if (esAdmin) {
-        var btn2 = document.getElementById("btn-mod-2");
-        var btn3 = document.getElementById("btn-mod-3");
-        if (btn2) btn2.style.display = "inline-block";
-        if (btn3) btn3.style.display = "inline-block";
-    }
-}
-
-window.addEventListener('DOMContentLoaded', (event) => {
-    aplicarSeguridadModulos();
-});
+    // Ejecutar conteo inicial al terminar de cargar los scripts
+    window.addEventListener('DOMContentLoaded', updateAllChapterCounts);
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => console.log('Service Worker registrado con éxito:', reg.scope))
+        .catch((err) => console.log('Error al registrar el Service Worker:', err));
+    });
+  }
+</script>
+<div style="text-align: right; padding: 15px; font-size: 0.8rem;">
+    <a href="javascript:void(0);" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none;">🔒 Acceso Admin</a>
+</div>
+</body>
+</html>
