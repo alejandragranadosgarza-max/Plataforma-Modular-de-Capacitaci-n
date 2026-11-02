@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plataforma Modular de Capacitación y Evaluación de Historias de usuario o Narrativas</title>
     
-    <!-- Enlace a tu hoja de estilos independiente (style.css de 277 líneas) -->
+    <!-- Enlace a tu hoja de estilos independiente (style.css) -->
     <link rel="stylesheet" href="style.css">
 
     <!-- Importar Mammoth.js desde CDN para leer archivos .docx en el navegador -->
@@ -93,7 +93,7 @@
             </div>
         </div>
 
-       <!-- Submódulo Business Analysis -->
+        <!-- Submódulo Business Analysis -->
         <div id="sub-ba" class="cap-submodule" style="display:none;">
             <div id="ba-quiz-setup" class="card">
                 <h3>Selecciona los capítulos para tu cuestionario (BABOK v3)</h3>
@@ -174,7 +174,7 @@
             </div>
         </div>
 
-       <!-- Submódulo Scrum -->
+        <!-- Submódulo Scrum -->
         <div id="sub-scrum" class="cap-submodule" style="display:none;">
             <div id="scrum-quiz-setup" class="card">
                 <h3>Selecciona los roles o áreas para tu cuestionario de Scrum</h3>
@@ -337,59 +337,17 @@
 
 </div>
 
-<!-- Carga de Archivos de Preguntas y Lógica Principal (Modular) -->
+<!-- Carga de Archivos de Preguntas y Lógica Principal (con ?v=final para evitar caché viejo) -->
 <script src="questions_testing.js"></script>
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
 <script src="questions_scrum.js"></script>
 <script src="questions_ux.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=final"></script>
 <script src="atdd_lab.js"></script>
 <script src="narrative_eval_lab.js"></script>
 
 <script>
-    function switchMainTab(tabId, btn) {
-        var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
-        if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && !esAdmin) {
-            alert("Acceso restringido. Debes iniciar sesión como administradora.");
-            return;
-        }
-
-        var mods = document.querySelectorAll('.container > .module');
-        for (var i = 0; i < mods.length; i++) mods[i].classList.remove('active');
-        var btns = document.querySelectorAll('nav button');
-        for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
-        
-        var targetMod = document.getElementById(tabId);
-        if (targetMod) targetMod.classList.add('active');
-        if (btn) btn.classList.add('active');
-    }
-
-    function switchCapSubModule(subId) {
-        var subs = document.querySelectorAll('.cap-submodule');
-        for (var i = 0; i < subs.length; i++) subs[i].style.display = 'none';
-        var targetSub = document.getElementById(subId);
-        if (targetSub) targetSub.style.display = 'block';
-        
-        var act = document.getElementById('quiz-active');
-        var sum = document.getElementById('quiz-summary');
-        if(act) act.style.display = 'none';
-        if(sum) sum.style.display = 'none';
-        
-        if(subId === 'sub-testing') {
-            updateSelectionCounter('testing');
-        } else if(subId === 'sub-ba') {
-            updateSelectionCounter('ba');
-        } else if(subId === 'sub-tech') {
-            updateSelectionCounter('tech');
-        } else if(subId === 'sub-scrum') {
-            updateSelectionCounter('scrum');
-        } else if(subId === 'sub-ux') {
-            updateSelectionCounter('ux');
-        }
-        updateAllChapterCounts();
-    }
-
     function updateAllChapterCounts() {
         // Conteo para Testing
         var tPool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
