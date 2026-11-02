@@ -1,280 +1,429 @@
+// ==========================================
+// MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
+// Archivo: narrative_eval_lab.js (Completo)
+// ==========================================
+
 var narrativeCounter = 0;
-var globalBusinessObjectives = [];
+var businessObjectivesCatalog = [];
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-
-window.addEventListener('DOMContentLoaded', (event) => {
+// Inicializar el primer formulario automáticamente al cargar la página
+window.addEventListener('DOMContentLoaded', function() {
     var container = document.getElementById('narratives-container');
     if (container && container.children.length === 0) {
         addNarrativeForm();
     }
 });
 
-// --- CARGADOR DE OBJETIVOS COMERCIALES (.DOC y .DOCX)
+// --- 1. CARGA DE PLANTILLA CORPORATIVA WORD (.DOCX / .DOC) Y OTROS FORMATOS ---
 function loadWordTemplate(event) {
     var file = event.target.files[0];
     if (!file) return;
 
     var fileName = file.name.toLowerCase();
 
-    // Validar si es un documento de Word tradicional (.doc)
-    if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
-        alert("⚠️ Has seleccionado un archivo formato .doc antiguo. Te sugerimos guardarlo como .docx (Word moderno) para asegurar una lectura perfecta de tablas y estructuras.");
-        // Opcional: puedes intentar procesarlo o pedir la conversión
+    // Si el usuario sube TXT, CSV, XML o JSON en el mismo selector, lo procesamos también
+    if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.xml') || fileName.endsWith('.json')) {
+        loadBusinessObjectives(event);
         return;
     }
 
-    // Si es .docx, prosigue con la lectura normal con Mammoth.js
+    if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
+        alert("⚠️ Has seleccionado un archivo formato .doc antiguo (binario). Por favor, ábrelo en Word y guárdalo como 'Documento de Word (.docx)' para poder extraer sus tablas y objetivos automáticamente en el navegador.");
+        return;
+    }
+
+    if (typeof mammoth === 'undefined') {
+        alert("⚠️ La librería Mammoth.js no está disponible. Verifica tu conexión a internet.");
+        return;
+    }
+
     var reader = new FileReader();
     reader.onload = function(loadEvent) {
         var arrayBuffer = loadEvent.target.result;
         mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
             .then(function(result) {
-                parseWordHtmlContent(result.value);
-                alert("¡Plantilla de Word procesada con éxito!");
+                parseWordHtmlToObjectives(result.value);
+                populateAllObjectiveSelects();
+                alert("✅ ¡Plantilla Word procesada con éxito! Se cargaron " + businessObjectivesCatalog.length + " objetivos/necesidades en el catálogo de trazabilidad.");
             })
             .catch(function(error) {
-                console.error("Error al procesar el archivo Word:", error);
-                alert("⚠️ Error al leer el documento. Verifica que el archivo no esté protegido o dañado.");
+                console.error("Error al leer archivo Word:", error);
+                alert("⚠️ No se pudo leer el archivo .docx. Verifica que no esté dañado o protegido con contraseña.");
             });
     };
     reader.readAsArrayBuffer(file);
 }
 
-function updateAllObjectiveDropdowns() {
-    var selects = document.querySelectorAll('.nar-obj-select');
-    selects.forEach(select => {
-        var currentVal = select.value;
-        select.innerHTML = '<option value="">-- Seleccione Objetivo Comercial --</option>';
-        globalBusinessObjectives.forEach(obj => {
-            var opt = document.createElement('option');
-            opt.value = obj.key + " - " + obj.name;
-            opt.textContent = "[" + obj.key + "] " + obj.name;
-            if (opt.value === currentVal) opt.selected = true;
-            select.appendChild(opt);
-        });
-    });
+function parseWordHtmlToObjectives(htmlStr) {
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlStr;
+    businessObjectivesCatalog = [];
+
+    // 1. Buscar en tablas del documento Word
+    var tables = tempDiv.querySelectorAll('table');
+    if (tables.length > 0) {
+        for (var t = 0; t < tables.length; t++) {
+            var rows = tables[t].querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var cols = rows[i].querySelectorAll('td, th');
+                if (cols.length >= 2) {
+                    var col0 = cols[0].textContent.trim();
+                    var col1 = cols[1].textContent.trim();
+                    // Ignorar encabezados típicos de tabla
+                    if (col0.toLowerCase() === 'id' || col0.toLowerCase() === 'clave' || col0.toLowerCase().indexOf('objetivo') !== -1 && i === 0) {
+                        continue;
+                    }
+                    if (col0 || col1) {
+                        businessObjectivesCatalog.push({
+                            id: col0 || ("OBJ-0" + (businessObjectivesCatalog.length + 1)),
+                            desc: col1 || col0
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Si no había tablas con datos, extraer párrafos o listas relevantes
+    if (businessObjectivesCatalog.length === 0) {
+        var elements = tempDiv.querySelectorAll('p, li');
+        for (var j = 0; j < elements.length; j++) {
+            var txt = elements[j].textContent.trim();
+            if (txt.length > 8) {
+                var parts = txt.split(/[:\-–]/);
+                if (parts.length >= 2 && parts[0].trim().length <= 15) {
+                    businessObjectivesCatalog.push({
+                        id: parts[0].trim(),
+                        desc: parts.slice(1).join(' ').trim()
+                    });
+                } else {
+                    businessObjectivesCatalog.push({
+                        id: "OBJ-0" + (businessObjectivesCatalog.length + 1),
+                        desc: txt.substring(0, 120)
+                    });
+                }
+            }
+        }
+    }
 }
 
-function addNarrativeForm(objVal = '', reqNumVal = '', reqNameVal = '', narrVal = '', inVal = '', outVal = '', rulesVal = '', critVal = '') {
-    // 1. Asegurar que el contador de narrativas exista
-    if (typeof narrativeCounter === 'undefined') {
-        window.narrativeCounter = 0;
-    }
-    narrativeCounter++;
+// Soporte retrocompatible para archivos TXT, CSV, XML o JSON
+function loadBusinessObjectives(event) {
+    var file = event.target.files[0];
+    if (!file) return;
 
-    // 2. Buscar el contenedor en el HTML de forma segura
-    var container = document.getElementById('narratives-container');
-    if (!container) {
-        alert("Error crítico: No se encontró el contenedor 'narratives-container' en el HTML.");
+    var fileName = file.name.toLowerCase();
+    if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+        loadWordTemplate(event);
         return;
     }
 
-    var narrativeId = 'narrative-card-' + narrativeCounter;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var content = e.target.result;
+        businessObjectivesCatalog = [];
 
-    var cardDiv = document.createElement('div');
-    cardDiv.className = 'card narrative-set';
-    cardDiv.id = narrativeId;
-    cardDiv.style.marginBottom = '20px';
-
-    // 3. Validar que el catálogo global exista para evitar errores de forEach
-    var optionsHTML = '<option value="">-- Seleccione Objetivo Comercial --</option>';
-    if (typeof globalBusinessObjectives !== 'undefined' && Array.isArray(globalBusinessObjectives)) {
-        globalBusinessObjectives.forEach(obj => {
-            var valStr = obj.key + " - " + obj.name;
-            var selected = (valStr === objVal) ? 'selected' : '';
-            optionsHTML += `<option value="${escapeHTML(valStr)}" ${selected}>[${escapeHTML(obj.key)}] ${escapeHTML(obj.name)}</option>`;
-        });
-    }
-
-    cardDiv.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h4 style="margin: 0; color: var(--primary-purple, #6b21a8);">📋 Requerimiento Funcional #${narrativeCounter}</h4>
-            <div>
-                <button type="button" class="btn-outline" onclick="toggleNarrativeForm('${narrativeId}', this)" style="padding: 4px 10px; font-size: 0.8rem;">👁️ Ocultar</button>
-                <button type="button" class="btn-accent" onclick="removeNarrativeForm('${narrativeId}')" style="padding: 4px 10px; font-size: 0.8rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Eliminar</button>
-            </div>
-        </div>
-        <div class="narrative-body" style="display: flex; flex-direction: column; gap: 12px;">
-            
-            <div style="display: flex; gap: 12px; width: 100%;">
-                <div style="width: 45%;">
-                    <label style="display: block; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><b>Clave de Objetivo Comercial:</b></label>
-                    <select class="nar-obj-select" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; height: 38px; box-sizing: border-box;">
-                        ${optionsHTML}
-                    </select>
-                </div>
-                <div style="width: 20%;">
-                    <label style="display: block; margin-bottom: 5px; white-space: nowrap;"><b>Núm. Req:</b></label>
-                    <input type="text" class="nar-num" placeholder="Ej. REQ-01" value="${escapeHTML(reqNumVal)}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; height: 38px;">
-                </div>
-                <div style="width: 35%;">
-                    <label style="display: block; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><b>Nombre de Requerimiento:</b></label>
-                    <input type="text" class="nar-req-name" placeholder="Ej. Cálculo Fiscal" value="${escapeHTML(reqNameVal)}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; height: 38px;">
-                </div>
-            </div>
-
-            <div>
-                <label style="display: block; margin-bottom: 5px;"><b>Narrativa (Descripción formal sin ambigüedades):</b></label>
-                <textarea class="nar-text" rows="3" placeholder="Ej. El sistema calculará el impuesto basándose en la tabla fiscal vigente..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">${escapeHTML(narrVal)}</textarea>
-            </div>
-
-            <div>
-                <label style="display: block; margin-bottom: 5px;"><b>Entradas (Datos requeridos para el proceso):</b></label>
-                <textarea class="nar-in" rows="2" placeholder="Ej. ID de cliente, Monto bruto, Código postal" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">${escapeHTML(inVal)}</textarea>
-            </div>
-
-            <div>
-                <label style="display: block; margin-bottom: 5px;"><b>Salidas (Resultados esperados / Datos generados):</b></label>
-                <textarea class="nar-out" rows="2" placeholder="Ej. Factura PDF generada, Registro en tabla de auditoría" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">${escapeHTML(outVal)}</textarea>
-            </div>
-
-            <div>
-                <label style="display: block; margin-bottom: 5px;"><b>Reglas (Negocio, Requerimientos No Funcionales, Seguridad u otras consideraciones):</b></label>
-                <textarea class="nar-rules" rows="2" placeholder="Ej. El tiempo de respuesta no debe superar 2 segundos; acceso exclusivo para roles ADMIN." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">${escapeHTML(rulesVal)}</textarea>
-            </div>
-
-            <div>
-                <label style="display: block; margin-bottom: 5px;"><b>Criterios de Aceptación (Desarrollo y QA):</b></label>
-                <textarea class="nar-crit" rows="2" placeholder="Ej. El cálculo debe ser exacto a dos decimales y probado con casos límite." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">${escapeHTML(critVal)}</textarea>
-            </div>
-        </div>
-    `;
-
-    container.appendChild(cardDiv);
+        try {
+            if (fileName.endsWith('.json')) {
+                var data = JSON.parse(content);
+                var arr = Array.isArray(data) ? data : (data.objectives || []);
+                for (var i = 0; i < arr.length; i++) {
+                    businessObjectivesCatalog.push({
+                        id: arr[i].id || arr[i].clave || ("OBJ-0" + (i + 1)),
+                        desc: arr[i].description || arr[i].desc || arr[i].nombre || ""
+                    });
+                }
+            } else if (fileName.endsWith('.xml')) {
+                var parser = new DOMParser();
+                var xmlDoc = parser.parseFromString(content, "text/xml");
+                var nodes = xmlDoc.getElementsByTagName("objetivo");
+                if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("objective");
+                for (var j = 0; j < nodes.length; j++) {
+                    businessObjectivesCatalog.push({
+                        id: nodes[j].getAttribute("id") || ("OBJ-0" + (j + 1)),
+                        desc: nodes[j].textContent.trim()
+                    });
+                }
+            } else {
+                var lines = content.split(/\r?\n/);
+                for (var k = 0; k < lines.length; k++) {
+                    var line = lines[k].trim();
+                    if (!line) continue;
+                    var parts = line.split(/[,;|:\t]/);
+                    if (parts.length >= 2) {
+                        businessObjectivesCatalog.push({
+                            id: parts[0].trim(),
+                            desc: parts.slice(1).join(' ').trim()
+                        });
+                    } else {
+                        businessObjectivesCatalog.push({
+                            id: "OBJ-0" + (businessObjectivesCatalog.length + 1),
+                            desc: line
+                        });
+                    }
+                }
+            }
+            populateAllObjectiveSelects();
+            alert("✅ Catálogo cargado: " + businessObjectivesCatalog.length + " objetivos comerciales disponibles.");
+        } catch (err) {
+            console.error(err);
+            alert("⚠️ Error al procesar el archivo de catálogo.");
+        }
+    };
+    reader.readAsText(file, "UTF-8");
 }
 
-function toggleNarrativeForm(narrativeId, btn) {
-    var card = document.getElementById(narrativeId);
-    var body = card.querySelector('.narrative-body');
+function buildObjectiveOptionsHtml(selectedValue) {
+    var html = '<option value="">-- Seleccione Objetivo Comercial --</option>';
+    for (var i = 0; i < businessObjectivesCatalog.length; i++) {
+        var obj = businessObjectivesCatalog[i];
+        var val = obj.id + " - " + obj.desc;
+        var isSel = (selectedValue && (selectedValue === val || selectedValue === obj.id)) ? ' selected' : '';
+        html += '<option value="' + escapeHtmlAttr(val) + '"' + isSel + '>' + escapeHtmlAttr(obj.id + ": " + obj.desc) + '</option>';
+    }
+    return html;
+}
+
+function populateAllObjectiveSelects() {
+    var selects = document.querySelectorAll('.nar-obj-select');
+    for (var i = 0; i < selects.length; i++) {
+        var currentVal = selects[i].value;
+        selects[i].innerHTML = buildObjectiveOptionsHtml(currentVal);
+    }
+}
+
+// --- 2. AGREGAR, OCULTAR Y ELIMINAR FORMULARIOS DE REQUERIMIENTOS FUNCIONALES ---
+function addNarrativeForm(prefillData) {
+    var container = document.getElementById('narratives-container');
+    if (!container) return;
+
+    narrativeCounter++;
+    var idx = narrativeCounter;
+    var reqDefaultId = (prefillData && prefillData.reqId) ? prefillData.reqId : ("REQ-0" + idx);
+    var reqName = (prefillData && prefillData.reqName) ? prefillData.reqName : "";
+    var objVal = (prefillData && prefillData.objective) ? prefillData.objective : "";
+    var descVal = (prefillData && prefillData.narrative) ? prefillData.narrative : "";
+    var ioVal = (prefillData && prefillData.io) ? prefillData.io : "";
+    var acVal = (prefillData && prefillData.criteria) ? prefillData.criteria : "";
+
+    var card = document.createElement('div');
+    card.className = 'card narrative-item-card';
+    card.id = 'nar-card-' + idx;
+    card.style.marginBottom = '20px';
+    card.style.borderLeft = '5px solid #7c3aed';
+    card.style.padding = '20px';
+
+    var html = '' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">' +
+            '<h3 style="margin:0; color:#5b21b6; font-size:1.05rem;">📋 Requerimiento Funcional #' + idx + '</h3>' +
+            '<div style="display:flex; gap:8px;">' +
+                '<button type="button" class="btn-outline" id="btn-toggle-nar-' + idx + '" onclick="toggleNarrativeBody(' + idx + ')">👁️ Ocultar</button>' +
+                '<button type="button" class="btn" style="background:#dc3545; color:white; padding:6px 12px;" onclick="removeNarrativeForm(' + idx + ')">🗑️ Eliminar</button>' +
+            '</div>' +
+        '</div>' +
+        '<div id="nar-body-' + idx + '">' +
+            '<div style="display:grid; grid-template-columns: 2fr 1fr 1.5fr; gap:12px; margin-bottom:15px;">' +
+                '<div>' +
+                    '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Clave de Objetivo Comercial:</label>' +
+                    '<select id="nar-obj-' + idx + '" class="nar-obj-select" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' +
+                        buildObjectiveOptionsHtml(objVal) +
+                    '</select>' +
+                '</div>' +
+                '<div>' +
+                    '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Núm. Req:</label>' +
+                    '<input type="text" id="nar-reqid-' + idx + '" value="' + escapeHtmlAttr(reqDefaultId) + '" placeholder="Ej. REQ-01" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' +
+                '</div>' +
+                '<div>' +
+                    '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Nombre de Requerimiento:</label>' +
+                    '<input type="text" id="nar-name-' + idx + '" value="' + escapeHtmlAttr(reqName) + '" placeholder="Ej. Cálculo Fiscal" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' +
+                '</div>' +
+            '</div>' +
+            '<div style="margin-bottom:15px;">' +
+                '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Narrativa (Descripción formal sin ambigüedades):</label>' +
+                '<textarea id="nar-desc-' + idx + '" rows="3" placeholder="El sistema debe procesar..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' + escapeHtmlText(descVal) + '</textarea>' +
+            '</div>' +
+            '<div style="margin-bottom:15px;">' +
+                '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Datos de Entrada, Reglas de Negocio y Salidas Esperadas:</label>' +
+                '<textarea id="nar-io-' + idx + '" rows="3" placeholder="Entradas: RFC, Monto... | Regla: Aplicar tasa 16%... | Salida: Recibo PDF..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' + escapeHtmlText(ioVal) + '</textarea>' +
+            '</div>' +
+            '<div>' +
+                '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Criterios de Aceptación / Verificación para QA y Desarrollo:</label>' +
+                '<textarea id="nar-ac-' + idx + '" rows="3" placeholder="1. Validar cálculo exacto a 2 decimales...\n2. Mostrar mensaje de error E-04 si el campo está vacío..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' + escapeHtmlText(acVal) + '</textarea>' +
+            '</div>' +
+        '</div>';
+
+    card.innerHTML = html;
+    container.appendChild(card);
+}
+
+function toggleNarrativeBody(idx) {
+    var body = document.getElementById('nar-body-' + idx);
+    var btn = document.getElementById('btn-toggle-nar-' + idx);
+    if (!body) return;
     if (body.style.display === 'none') {
         body.style.display = 'block';
-        btn.innerText = '👁️ Ocultar';
+        if (btn) btn.innerText = '👁️ Ocultar';
     } else {
         body.style.display = 'none';
-        btn.innerText = '📂 Mostrar';
+        if (btn) btn.innerText = '👁️ Mostrar';
     }
 }
 
-function removeNarrativeForm(narrativeId) {
-    var card = document.getElementById(narrativeId);
+function removeNarrativeForm(idx) {
+    var card = document.getElementById('nar-card-' + idx);
     if (card) {
         card.remove();
     }
 }
 
-// VALIDACIÓN ESTRICTA
-function validateAllNarratives() {
-    var cards = document.querySelectorAll('.narrative-set');
-    var outputDiv = document.getElementById('nar-output');
-    
-    if (cards.length === 0) {
-        alert("⚠️ No hay requerimientos funcionales agregados para validar.");
-        return;
-    }
+// --- 3. RECOLECCIÓN Y VALIDACIÓN DE NARRATIVAS (ESTÁNDAR SRS / CASCADA) ---
+function collectAllNarratives() {
+    var cards = document.querySelectorAll('.narrative-item-card');
+    var list = [];
+    for (var i = 0; i < cards.length; i++) {
+        var cardId = cards[i].id.replace('nar-card-', '');
+        var objEl = document.getElementById('nar-obj-' + cardId);
+        var reqIdEl = document.getElementById('nar-reqid-' + cardId);
+        var nameEl = document.getElementById('nar-name-' + cardId);
+        var descEl = document.getElementById('nar-desc-' + cardId);
+        var ioEl = document.getElementById('nar-io-' + cardId);
+        var acEl = document.getElementById('nar-ac-' + cardId);
 
-    var htmlReport = "<h3>📊 Informe de Validación Estática y Calidad de Narrativas (SRS)</h3>";
-    var hayErroresTotales = false;
-
-    cards.forEach((card, index) => {
-        var reqNum = card.querySelector('.nar-num').value || `REQ-0${index + 1}`;
-        var reqName = card.querySelector('.nar-req-name').value || 'Sin Nombre';
-        var narrText = card.querySelector('.nar-text').value;
-        var rulesText = card.querySelector('.nar-rules').value;
-        var critText = card.querySelector('.nar-crit').value;
-        var inText = card.querySelector('.nar-in').value;
-        var outText = card.querySelector('.nar-out').value;
-
-        // Ejecutar validaciones estructurales y de ambigüedad
-        var alertasCalidad = validarAmbiguedadesYCalidad(narrText, rulesText, critText);
-        
-        // Validar campos vacíos obligatorios
-        var camposVacios = [];
-        if (!narrText.trim()) camposVacios.push("Narrativa");
-        if (!inText.trim()) camposVacios.push("Entradas");
-        if (!outText.trim()) camposVacios.push("Salidas");
-        if (!critText.trim()) camposVacios.push("Criterios de Aceptación");
-
-        htmlReport += `<div style="border-left: 4px solid #6b21a8; padding: 10px; margin-bottom: 15px; background: #faf5ff;">`;
-        htmlReport += `<h4>${reqNum}: ${escapeHTML(reqName)}</h4>`;
-
-        if (camposVacios.length > 0) {
-            hayErroresTotales = true;
-            htmlReport += `<p style="color: #dc3545;">❌ <b>Campos obligatorios vacíos:</b> ${camposVacios.join(', ')}</p>`;
-        }
-
-        if (alertasCalidad.length > 0) {
-            htmlReport += `<ul style="margin: 5px 0 0 20px; color: #b45309;">`;
-            alertasCalidad.forEach(alerta => {
-                htmlReport += `<li>${alerta}</li>`;
-            });
-            htmlReport += `</ul>`;
-        } else if (camposVacios.length === 0) {
-            htmlReport += `<p style="color: #155724;">✅ <b>Sin ambigüedades detectadas:</b> El requerimiento cumple con los criterios de especificación formal.</p>`;
-        }
-
-        htmlReport += `</div>`;
-    });
-
-    outputDiv.innerHTML = htmlReport;
-    outputDiv.style.display = 'block';
-}
-
-// --- EXPORTAR PROYECTO A JSON ---
-function exportProjectJSON() {
-    var project = document.getElementById('nar-project').value.trim();
-    var cards = document.querySelectorAll('.narrative-set');
-
-    if (!project) {
-        alert("Por favor ingresa el Nombre del Proyecto antes de exportar en JSON.");
-        return;
-    }
-    if (cards.length === 0) {
-        alert("No hay requerimientos para exportar.");
-        return;
-    }
-
-    var projectData = {
-        projectName: project,
-        businessObjectives: globalBusinessObjectives,
-        requirements: []
-    };
-
-    cards.forEach((card) => {
-        var objVal = card.querySelector('.nar-obj-select').value.trim();
-        var reqNum = card.querySelector('.nar-num').value.trim();
-        var reqName = card.querySelector('.nar-req-name').value.trim();
-        var narr = card.querySelector('.nar-text').value.trim();
-        var inputs = card.querySelector('.nar-in').value.trim();
-        var outputs = card.querySelector('.nar-out').value.trim();
-        var rules = card.querySelector('.nar-rules').value.trim();
-        var criteria = card.querySelector('.nar-crit').value.trim();
-
-        projectData.requirements.push({
-            objective: objVal,
-            reqNum: reqNum,
-            reqName: reqName,
-            narrative: narr,
-            inputs: inputs,
-            outputs: outputs,
-            rules: rules,
-            criteria: criteria
+        list.push({
+            index: i + 1,
+            objective: objEl ? objEl.value.trim() : "",
+            reqId: reqIdEl ? reqIdEl.value.trim() : "",
+            reqName: nameEl ? nameEl.value.trim() : "",
+            narrative: descEl ? descEl.value.trim() : "",
+            io: ioEl ? ioEl.value.trim() : "",
+            criteria: acEl ? acEl.value.trim() : ""
         });
-    });
-
-    var jsonStr = JSON.stringify(projectData, null, 4);
-    var blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
-    var url = window.URL.createObjectURL(blob);
-    var downloadAnchor = document.createElement('a');
-    downloadAnchor.href = url;
-    downloadAnchor.download = `Proyecto_${project.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`;
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    document.body.removeChild(downloadAnchor);
-    window.URL.revokeObjectURL(url);
+    }
+    return list;
 }
 
-// --- IMPORTAR PROYECTO DESDE JSON ---
+function validateAllNarratives() {
+    var outBox = document.getElementById('nar-output');
+    if (!outBox) return;
+    outBox.style.display = 'block';
+
+    var project = document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "";
+    var items = collectAllNarratives();
+
+    if (items.length === 0) {
+        outBox.innerHTML = '<p style="color:#dc3545; font-weight:bold;">⚠️ No hay requerimientos registrados. Haz clic en "➕ Agregar Requerimiento Funcional".</p>';
+        return;
+    }
+
+    var ambiguousWords = ["rápido", "rapido", "fácil", "facil", "intuitivo", "amigable", "etc", "etc.", "algunos", "varios", "normalmente", "adecuado", "óptimo", "optimo", "eficiente"];
+    var html = '<h3>📊 Dictamen de Calidad de Especificaciones (SRS / Cascada)</h3>';
+    if (!project) {
+        html += '<p style="color:#d97706;">⚠️ <b>Nota:</b> Te sugerimos definir el <b>Nombre del Proyecto</b> en la parte superior.</p>';
+    } else {
+        html += '<p><b>Proyecto:</b> ' + escapeHtmlText(project) + '</p>';
+    }
+
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var issues = [];
+
+        if (!it.objective && businessObjectivesCatalog.length > 0) {
+            issues.push("Falta vincular la Clave de Objetivo Comercial (Trazabilidad de negocio).");
+        }
+        if (!it.reqId || !it.reqName) {
+            issues.push("Falta el identificador (Núm. Req) o el Nombre del Requerimiento.");
+        }
+        if (it.narrative.length < 20) {
+            issues.push("La narrativa es demasiado breve o incompleta para una especificación formal.");
+        }
+        if (it.io.length < 10) {
+            issues.push("Falta especificar claramente los Datos de Entrada, Reglas de Negocio o Salidas.");
+        }
+        if (it.criteria.length < 10) {
+            issues.push("Falta definir los Criterios de Aceptación / Verificación para QA.");
+        }
+
+        var combinedText = (it.narrative + " " + it.io + " " + it.criteria).toLowerCase();
+        var foundAmbiguous = [];
+        for (var w = 0; w < ambiguousWords.length; w++) {
+            var regex = new RegExp("\\b" + ambiguousWords[w] + "\\b", "i");
+            if (regex.test(combinedText)) {
+                foundAmbiguous.push(ambiguousWords[w]);
+            }
+        }
+        if (foundAmbiguous.length > 0) {
+            issues.push("Contiene términos ambiguos no verificables (" + foundAmbiguous.join(", ") + "). Sustitúyelos por métricas exactas.");
+        }
+
+        if (issues.length === 0) {
+            html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;">' +
+                '<b>✅ ' + escapeHtmlText(it.reqId || ('Req #' + it.index)) + ' - ' + escapeHtmlText(it.reqName || 'Sin nombre') + ':</b> Cumple con el estándar SRS (Completo, Trazable y Sin Ambigüedades).' +
+                '</div>';
+        } else {
+            html += '<div style="background:#f8d7da; border-left:5px solid #dc3545; padding:12px; margin-bottom:10px; border-radius:4px;">' +
+                '<b>❌ ' + escapeHtmlText(it.reqId || ('Req #' + it.index)) + ' - ' + escapeHtmlText(it.reqName || 'Sin nombre') + ':</b> Requiere ajustes:<ul>';
+            for (var k = 0; k < issues.length; k++) {
+                html += '<li>' + issues[k] + '</li>';
+            }
+            html += '</ul></div>';
+        }
+    }
+
+    outBox.innerHTML = html;
+}
+
+// --- 4. EXPORTAR SCRIPT WINDOWS Y DOCUMENTO WORD / JSON ---
+function exportProjectFoldersAndFiles() {
+    var project = (document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "") || "Proyecto_SRS";
+    var safeProj = project.replace(/[^a-zA-Z0-9_-]/g, "_");
+    var items = collectAllNarratives();
+
+    if (items.length === 0) {
+        alert("⚠️ Agrega al menos un requerimiento funcional antes de exportar.");
+        return;
+    }
+
+    var docContent = "====================================================\r\n";
+    docContent += "ESPECIFICACIÓN DE REQUERIMIENTOS DE SOFTWARE (SRS)\r\n";
+    docContent += "PROYECTO: " + project + "\r\n";
+    docContent += "====================================================\r\n\r\n";
+
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        docContent += "----------------------------------------------------\r\n";
+        docContent += "REQUERIMIENTO: " + (it.reqId || ("REQ-0" + it.index)) + " - " + (it.reqName || "Sin título") + "\r\n";
+        docContent += "OBJETIVO COMERCIAL: " + (it.objective || "No especificado") + "\r\n";
+        docContent += "----------------------------------------------------\r\n";
+        docContent += "1. NARRATIVA FORMAL:\r\n" + (it.narrative || "N/A") + "\r\n\r\n";
+        docContent += "2. ENTRADAS, REGLAS Y SALIDAS:\r\n" + (it.io || "N/A") + "\r\n\r\n";
+        docContent += "3. CRITERIOS DE VERIFICACIÓN QA:\r\n" + (it.criteria || "N/A") + "\r\n\r\n";
+    }
+
+    var blob = new Blob([docContent], { type: "application/msword;charset=utf-8" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "SRS_" + safeProj + ".doc";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportProjectJSON() {
+    var project = (document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "") || "Proyecto_SRS";
+    var data = {
+        project: project,
+        objectivesCatalog: businessObjectivesCatalog,
+        requirements: collectAllNarratives()
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = project.replace(/[^a-zA-Z0-9_-]/g, "_") + "_SRS.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 function importProjectJSON(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -282,149 +431,40 @@ function importProjectJSON(event) {
     var reader = new FileReader();
     reader.onload = function(e) {
         try {
-            var content = e.target.result;
-            var data = JSON.parse(content);
-
-            if (!data.projectName || !Array.isArray(data.requirements)) {
-                alert("⚠️ El archivo JSON no tiene un formato válido.");
-                return;
+            var data = JSON.parse(e.target.result);
+            if (data.project && document.getElementById('nar-project')) {
+                document.getElementById('nar-project').value = data.project;
             }
-
-            document.getElementById('nar-project').value = data.projectName;
-            globalBusinessObjectives = data.businessObjectives || [];
-
+            if (Array.isArray(data.objectivesCatalog)) {
+                businessObjectivesCatalog = data.objectivesCatalog;
+            }
             var container = document.getElementById('narratives-container');
-            container.innerHTML = "";
+            if (container) container.innerHTML = '';
             narrativeCounter = 0;
 
-            data.requirements.forEach(req => {
-                addNarrativeForm(
-                    req.objective || '',
-                    req.reqNum || '',
-                    req.reqName || '',
-                    req.narrative || '',
-                    req.inputs || '',
-                    req.outputs || '',
-                    req.rules || '',
-                    req.criteria || ''
-                );
-            });
-
-            var outBox = document.getElementById('nar-output');
-            if (outBox) outBox.style.display = 'none';
-
-            alert("✅ ¡Proyecto '" + data.projectName + "' importado con éxito!");
+            var reqs = data.requirements || [];
+            for (var i = 0; i < reqs.length; i++) {
+                addNarrativeForm(reqs[i]);
+            }
+            if (reqs.length === 0) {
+                addNarrativeForm();
+            }
+            alert("✅ Proyecto importado correctamente.");
         } catch (err) {
-            alert("⚠️ Error al leer el archivo JSON.");
             console.error(err);
+            alert("⚠️ El archivo JSON seleccionado no tiene un formato válido.");
         }
-        event.target.value = "";
     };
-    reader.readAsText(file);
+    reader.readAsText(file, "UTF-8");
 }
 
-// GENERAR SCRIPT DE WINDOWS (.BAT) Y SRS CONSOLIDADO CON TRAZABILIDAD
-function exportProjectFoldersAndFiles() {
-    var project = document.getElementById('nar-project').value.trim();
-    var cards = document.querySelectorAll('.narrative-set');
-
-    if (!project) {
-        alert("Por favor ingresa el Nombre del Proyecto para exportar.");
-        return;
-    }
-    if (cards.length === 0) {
-        alert("No hay requerimientos para exportar.");
-        return;
-    }
-
-    var safeProjectName = project.replace(/[^a-zA-Z0-9_-]/g, "_");
-    var safeWordFilename = `SRS_${safeProjectName}_Requerimientos.doc`;
-    
-    var batContent = `@echo off\r\n`;
-    batContent += `chcp 65001 > nul\r\n`;
-    batContent += `echo Configurando carpetas y organizando documento SRS para: ${project}...\r\n\r\n`;
-    
-    batContent += `cd /d "%USERPROFILE%\\Documents"\r\n`;
-    batContent += `if not exist "Proyectos" mkdir "Proyectos"\r\n`;
-    batContent += `cd Proyectos\r\n`;
-    batContent += `if not exist "${safeProjectName}" mkdir "${safeProjectName}"\r\n`;
-    batContent += `cd "${safeProjectName}"\r\n`;
-    
-    batContent += `mkdir "Requerimientos_Funcionales"\r\n`;
-
-    var wordContent = `ESPECIFICACIÓN DE REQUERIMIENTOS DE SOFTWARE (SRS)\n`;
-    wordContent += `PROYECTO: ${project}\n`;
-    wordContent += `====================================================================\n\n`;
-
-    cards.forEach((card, index) => {
-        var num = index + 1;
-        var objVal = card.querySelector('.nar-obj-select').value.trim() || "N/A";
-        var reqNum = card.querySelector('.nar-num').value.trim() || `REQ_${num}`;
-        var reqName = card.querySelector('.nar-req-name').value.trim() || `Requerimiento_${num}`;
-        var narr = card.querySelector('.nar-text').value.trim() || "N/A";
-        var rules = card.querySelector('.nar-rules').value.trim() || "N/A";
-        
-        var rawInputs = card.querySelector('.nar-in').value.trim() || "N/A";
-        var rawOutputs = card.querySelector('.nar-out').value.trim() || "N/A";
-        
-        var inputList = rawInputs.split(/\n|,/).map(i => i.trim()).filter(i => i.length > 0);
-        var outputList = rawOutputs.split(/\n|,/).map(o => o.trim()).filter(o => o.length > 0);
-
-        var structuredIO = "";
-        var maxLen = Math.max(inputList.length, outputList.length, 1);
-        for (var i = 0; i < maxLen; i++) {
-            var entry = inputList[i] ? `Entrada ${i+1}: ${inputList[i]}` : `Entrada ${i+1}: N/A`;
-            var salida = outputList[i] ? `Salida ${i+1}: ${outputList[i]}` : (outputList[0] ? `Salida 1 (o n): ${outputList[0]}` : `Salida: N/A`);
-            structuredIO += `   [ ${entry} ]  --->  [ ${salida} ]\n`;
-        }
-
-        var criteria = card.querySelector('.nar-crit').value.trim() || "N/A";
-        var safeReqName = reqNum.replace(/[^a-zA-Z0-9_-]/g, "_");
-
-        batContent += `cd Requerimientos_Funcionales\r\n`;
-        batContent += `if not exist "${safeReqName}" mkdir "${safeReqName}"\r\n`;
-        batContent += `cd "${safeReqName}"\r\n`;
-        batContent += `echo REQUERIMIENTO: ${reqNum} - ${reqName} > ficha_requerimiento.txt\r\n`;
-        batContent += `echo OBJETIVO COMERCIAL: ${objVal} >> ficha_requerimiento.txt\r\n`;
-        batContent += `echo ---------------------------------------- >> ficha_requerimiento.txt\r\n`;
-        batContent += `echo NARRATIVA: ${narr} >> ficha_requerimiento.txt\r\n`;
-        batContent += `echo REGLAS: ${rules} >> ficha_requerimiento.txt\r\n`;
-        batContent += `echo CRITERIOS: ${criteria} >> ficha_requerimiento.txt\r\n`;
-        batContent += `cd ..\r\ncd ..\r\n`;
-
-        wordContent += `--------------------------------------------------------------------\n`;
-        wordContent += `REQUERIMIENTO #${num}: ${reqNum} - ${reqName}\n`;
-        wordContent += `--------------------------------------------------------------------\n`;
-        wordContent += `* OBJETIVO COMERCIAL (TRAZABILIDAD): ${objVal}\n\n`;
-        wordContent += `1. NARRATIVA:\n${narr}\n\n`;
-        wordContent += `2. MAPEO DE ENTRADAS Y SALIDAS (CASO DE USO):\n${structuredIO}\n`;
-        wordContent += `3. REGLAS (Negocio / Seguridad / NFR):\n${rules}\n\n`;
-        wordContent += `4. CRITERIOS DE ACEPTACIÓN (Desarrollo y QA):\n${criteria}\n\n\n`;
-    });
-
-    batContent += `if exist "%USERPROFILE%\\Downloads\\${safeWordFilename}" move /y "%USERPROFILE%\\Downloads\\${safeWordFilename}" "." > nul\r\n`;
-    batContent += `echo.\r\n`;
-    batContent += `echo ¡Estructura y documento SRS consolidado organizados con éxito en Documentos\\Proyectos\\${safeProjectName}!\r\n`;
-    batContent += `pause\r\n`;
-
-    var batBlob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
-    var batLink = document.createElement('a');
-    batLink.href = window.URL.createObjectURL(batBlob);
-    batLink.download = `Crear_Carpetas_${safeProjectName}.bat`;
-    batLink.click();
-
-    setTimeout(() => {
-        var wordBlob = new Blob(["\uFEFF" + wordContent], { type: 'application/msword;charset=utf-8' });
-        var wordLink = document.createElement('a');
-        wordLink.href = window.URL.createObjectURL(wordBlob);
-        wordLink.download = safeWordFilename;
-        wordLink.click();
-    }, 400);
+// --- UTILIDADES DE ESCAPE SEGURO ---
+function escapeHtmlAttr(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function escapeHTML(str) {
-    if (!str) return '';
-    return str.replace(/[&<>'"]/g, function(t) {
-        return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t;
-    });
+function escapeHtmlText(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
