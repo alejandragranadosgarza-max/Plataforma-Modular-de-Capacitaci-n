@@ -6,6 +6,9 @@
     <title>Plataforma Modular de Capacitación y Evaluación de Historias de usuario o Narrativas</title>
     <link rel="stylesheet" href="style.css">
 
+    <!-- Importar Mammoth.js desde CDN para leer archivos .docx en el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
     <!-- Enlace al manifiesto de la PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6b21a8">
@@ -309,9 +312,13 @@
                 <input type="text" id="nar-project" placeholder="Ej. Sistema de Nómina y Finanzas" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;">
                 
                 <div style="margin-bottom: 20px; background: #f3f0ff; padding: 15px; border-radius: 6px; border: 1px dashed #7c3aed;">
-                    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Catálogo de Objetivos Comerciales (TXT, XML, CSV o JSON.):</b></label>
-                    <input type="file" id="obj-catalog-file" accept=".txt,.csv,.xml,.json,.doc,.docx" onchange="loadBusinessObjectives(event)" style="font-size: 0.85rem;">
-                    <small style="display: block; color: #6b7280; margin-top: 4px;">Sube tu archivo para poblar automáticamente las opciones de trazabilidad en cada requerimiento.</small>
+    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Plantilla Corporativa (.docx o .doc):</b></label>
+    
+    <!-- Se actualiza el accept para permitir .docx y .doc -->
+                <input type="file" id="word-catalog-file" 
+                    accept=".docx, .doc, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                    onchange="loadWordTemplate(event)" style="font-size: 0.85rem;">
+                    <small style="display: block; color: #6b7280; margin-top: 4px;">Sube la plantilla oficial de Word (.docx o .doc) de tu empresa para extraer objetivos y necesidades automáticamente.</small>
                 </div>
 
                 <div id="narratives-container"></div>
