@@ -463,6 +463,26 @@ function validateAllNarratives() {
             if (ioPartsCount < 2) {
                 issues.push("<b>Especificación incompleta en Datos de Entrada, Reglas y Salidas:</b> Asegúrate de detallar tanto las <i>Entradas</i> como las <i>Reglas de Negocio</i> y las <i>Salidas Esperadas</i>.");
             }
+
+            var fluffWords = ["básicamente", "en general", "como es sabido", "para fines prácticos", "es importante que"];
+            var foundFluff = [];
+                for (var f = 0; f < fluffWords.length; f++) {
+             var regexFluff = new RegExp("\\b" + fluffWords[f] + "\\b", "i");
+                if (regexFluff.test(combinedText)) {
+                 foundFluff.push(fluffWords[f]);
+    }
+        }
+            if (foundFluff.length > 0) {
+            issues.push("<b>Información irrelevante detectada:</b> Elimina frases de relleno (<b>" + foundFluff.join(", ") + "</b>) que no aportan valor técnico a la especificación.");
+        }
+
+        // Validación estricta de repetitividad de ideas (Jaccard > 75%)
+        var simNarIo = calculateTextSimilarity(it.narrative, it.io);
+        var simNarAc = calculateTextSimilarity(it.narrative, it.criteria);
+
+            if (simNarIo >= 0.75 || simNarAc >= 0.75) {
+            issues.push("<b>Ideas repetitivas:</b> Estás reciclando la misma redacción en múltiples campos. Los Criterios de Aceptación deben ser reglas verificables, no un resumen de la Narrativa.");
+        }
         }
 
         // C. Validación de Duplicidad Interna (entre las 3 cajas del mismo requerimiento)
