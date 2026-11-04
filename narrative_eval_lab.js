@@ -1,6 +1,6 @@
 // ==========================================
 // MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
-// Archivo: narrative_eval_lab.js (Completo con Validación de Incompletitud y Duplicidad)
+// Archivo: narrative_eval_lab.js (Completo con filtros y UX de salto)
 // ==========================================
 
 var narrativeCounter = 0;
@@ -21,7 +21,6 @@ function loadWordTemplate(event) {
 
     var fileName = file.name.toLowerCase();
 
-    // Si el usuario sube TXT, CSV, XML o JSON en el mismo selector, lo procesamos también
     if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.xml') || fileName.endsWith('.json')) {
         loadBusinessObjectives(event);
         return;
@@ -59,7 +58,6 @@ function parseWordHtmlToObjectives(htmlStr) {
     tempDiv.innerHTML = htmlStr;
     businessObjectivesCatalog = [];
 
-    // 1. Buscar en tablas del documento Word
     var tables = tempDiv.querySelectorAll('table');
     if (tables.length > 0) {
         for (var t = 0; t < tables.length; t++) {
@@ -69,7 +67,6 @@ function parseWordHtmlToObjectives(htmlStr) {
                 if (cols.length >= 2) {
                     var col0 = cols[0].textContent.trim();
                     var col1 = cols[1].textContent.trim();
-                    // Ignorar encabezados típicos de tabla
                     if (col0.toLowerCase() === 'id' || col0.toLowerCase() === 'clave' || (col0.toLowerCase().indexOf('objetivo') !== -1 && i === 0)) {
                         continue;
                     }
@@ -84,7 +81,6 @@ function parseWordHtmlToObjectives(htmlStr) {
         }
     }
 
-    // 2. Si no había tablas con datos, extraer párrafos o listas relevantes
     if (businessObjectivesCatalog.length === 0) {
         var elements = tempDiv.querySelectorAll('p, li');
         for (var j = 0; j < elements.length; j++) {
@@ -107,7 +103,6 @@ function parseWordHtmlToObjectives(htmlStr) {
     }
 }
 
-// Soporte retrocompatible para archivos TXT, CSV, XML o JSON
 function loadBusinessObjectives(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -277,8 +272,6 @@ function removeNarrativeForm(idx) {
 }
 
 // --- 3. FUNCIONES AUXILIARES PARA DETECCIÓN DE INCOMPLETITUD Y DUPLICIDAD ---
-
-// Normaliza un texto para comparaciones exactas y de similitud
 function normalizeTextForCompare(str) {
     if (!str) return "";
     return str
@@ -293,14 +286,12 @@ function normalizeTextForCompare(str) {
         .trim();
 }
 
-// Calcula la similitud de Jaccard (0 a 1) entre dos textos para detectar contenido clonado o casi idéntico
 function calculateTextSimilarity(str1, str2) {
     var n1 = normalizeTextForCompare(str1);
     var n2 = normalizeTextForCompare(str2);
     if (!n1 || !n2) return 0;
     if (n1 === n2) return 1;
 
-    // Si uno contiene íntegramente al otro y tienen longitud relevante
     if ((n1.length > 25 && n2.indexOf(n1) !== -1) || (n2.length > 25 && n1.indexOf(n2) !== -1)) {
         var minLen = Math.min(n1.length, n2.length);
         var maxLen = Math.max(n1.length, n2.length);
@@ -330,7 +321,6 @@ function calculateTextSimilarity(str1, str2) {
     return unionCount === 0 ? 0 : (intersection / unionCount);
 }
 
-// Analiza si un campo específico está inconcluso, truncado o con marcadores pendientes
 function checkFieldCompleteness(text, fieldLabel, minWords) {
     var problems = [];
     var trimmed = (text || "").trim();
@@ -345,12 +335,10 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
         problems.push("El campo <b>" + fieldLabel + "</b> es demasiado breve o incompleto (contiene " + words.length + " palabras; se requieren al menos " + minWords + " palabras para una especificación formal).");
     }
 
-    // 1. Detectar signos de puntuación abiertos o truncos al final
     if (/[,;:\-\/\\]$/.test(trimmed) || /\.\.\.$/.test(trimmed) || /…$/.test(trimmed)) {
         problems.push("<b>Texto inconcluso en " + fieldLabel + ":</b> Termina en puntuación abierta o puntos suspensivos (<code>" + escapeHtmlText(trimmed.slice(-12)) + "</code>), lo que indica una idea sin terminar.");
     }
 
-    // 2. Detectar si termina en conectores, preposiciones, artículos o conjunciones colgadas
     var cleanedEnd = trimmed.replace(/[.!?]+$/, "").trim();
     var lastWordMatch = cleanedEnd.match(/([a-záéíóúüñA-ZÁÉÍÓÚÜÑ]+)$/);
     if (lastWordMatch) {
@@ -369,14 +357,12 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
         }
     }
 
-    // 3. Detectar marcadores de trabajo sin terminar (Placeholders / TBD)
     var placeholderRegex = /\b(tbd|pendiente|por definir|por confirmar|completar|falta|todo|to-do|xxx+|zzz+)\b|\?\?\?/i;
     var matchPlaceholder = trimmed.match(placeholderRegex);
     if (matchPlaceholder) {
         problems.push("<b>Información pendiente en " + fieldLabel + ":</b> Contiene el marcador temporal <b>\"" + escapeHtmlText(matchPlaceholder[0]) + "\"</b>.Toda especificación SRS debe estar cerrada antes de desarrollo.");
     }
 
-    // 4. Detectar paréntesis o corchetes abiertos sin cerrar
     var openParens = (trimmed.match(/\(/g) || []).length;
     var closeParens = (trimmed.match(/\)/g) || []).length;
     if (openParens !== closeParens) {
@@ -400,7 +386,7 @@ function collectAllNarratives() {
         var acEl = document.getElementById('nar-ac-' + cardId);
 
         list.push({
-            index: i + 1,
+            index: cardId, // Utilizamos el ID exacto de la tarjeta para anclar el doble clic
             objective: objEl ? objEl.value.trim() : "",
             reqId: reqIdEl ? reqIdEl.value.trim() : "",
             reqName: nameEl ? nameEl.value.trim() : "",
@@ -437,6 +423,7 @@ function validateAllNarratives() {
         var it = items[i];
         var issues = [];
         var reqLabel = (it.reqId || ('Req #' + it.index)) + ' - ' + (it.reqName || 'Sin nombre');
+        var cardId = 'nar-card-' + it.index; // Identificador exacto de la caja
 
         // A. Validación de Trazabilidad e Identificación
         if (!it.objective && businessObjectivesCatalog.length > 0) {
@@ -446,14 +433,42 @@ function validateAllNarratives() {
             issues.push("Falta el identificador (<b>Núm. Req</b>) o el <b>Nombre del Requerimiento</b>.");
         }
 
-        // B. Validación de Completitud y Textos Inconclusos en los 3 Campos Principales
+        // B. Validación de Completitud y Textos Inconclusos
         var narrativeIssues = checkFieldCompleteness(it.narrative, "Narrativa", 8);
         var ioIssues = checkFieldCompleteness(it.io, "Datos de Entrada, Reglas y Salidas", 6);
         var criteriaIssues = checkFieldCompleteness(it.criteria, "Criterios de Aceptación / Verificación QA", 6);
-
         issues = issues.concat(narrativeIssues, ioIssues, criteriaIssues);
 
-        // Validar que el campo de Entradas/Reglas/Salidas no tenga solo una parte (ej. solo entradas sin reglas o salidas)
+        // Validación de palabras de relleno (Fluff Words)
+        var combinedText = (it.narrative + " " + it.io + " " + it.criteria).toLowerCase();
+        var fluffWords = ["básicamente", "en general", "como es sabido", "para fines prácticos", "es importante que", "cosas", "detalles"];
+        var foundFluff = [];
+        for (var f = 0; f < fluffWords.length; f++) {
+            var regexFluff = new RegExp("\\b" + fluffWords[f] + "\\b", "i");
+            if (regexFluff.test(combinedText)) {
+                foundFluff.push(fluffWords[f]);
+            }
+        }
+        if (foundFluff.length > 0) {
+            issues.push("<b>Información irrelevante detectada:</b> Elimina frases de relleno (<b>" + foundFluff.join(", ") + "</b>) que no aportan valor técnico a la especificación.");
+        }
+
+        // C. Validación de Duplicidad Interna (Similitud Estricta >= 0.75)
+        var simNarIo = calculateTextSimilarity(it.narrative, it.io);
+        var simNarAc = calculateTextSimilarity(it.narrative, it.criteria);
+        var simIoAc = calculateTextSimilarity(it.io, it.criteria);
+
+        if (simNarIo >= 0.75) {
+            issues.push("<b>Ideas repetitivas:</b> El texto de <i>Narrativa</i> y el de <i>Datos de Entrada, Reglas y Salidas</i> son demasiado similares. Aporta detalles técnicos, no un resumen.");
+        }
+        if (simNarAc >= 0.75) {
+            issues.push("<b>Ideas repetitivas:</b> Estás reciclando la misma redacción entre <i>Narrativa</i> y <i>Criterios de Aceptación</i>. Los criterios deben ser reglas verificables.");
+        }
+        if (simIoAc >= 0.75) {
+            issues.push("<b>Ideas repetitivas:</b> El texto de <i>Datos de Entrada, Reglas y Salidas</i> y el de <i>Criterios de Aceptación</i> están duplicados o son casi idénticos.");
+        }
+
+        // Validar que el campo de Entradas/Reglas/Salidas no tenga solo una parte
         if (it.io.trim().length >= 15) {
             var ioLower = it.io.toLowerCase();
             var hasInputRef = /(entrada|input|campo|dato|captura|recibe|parámetro|parametro)/i.test(ioLower);
@@ -463,41 +478,6 @@ function validateAllNarratives() {
             if (ioPartsCount < 2) {
                 issues.push("<b>Especificación incompleta en Datos de Entrada, Reglas y Salidas:</b> Asegúrate de detallar tanto las <i>Entradas</i> como las <i>Reglas de Negocio</i> y las <i>Salidas Esperadas</i>.");
             }
-
-            var fluffWords = ["básicamente", "en general", "como es sabido", "para fines prácticos", "es importante que"];
-            var foundFluff = [];
-                for (var f = 0; f < fluffWords.length; f++) {
-             var regexFluff = new RegExp("\\b" + fluffWords[f] + "\\b", "i");
-                if (regexFluff.test(combinedText)) {
-                 foundFluff.push(fluffWords[f]);
-    }
-        }
-            if (foundFluff.length > 0) {
-            issues.push("<b>Información irrelevante detectada:</b> Elimina frases de relleno (<b>" + foundFluff.join(", ") + "</b>) que no aportan valor técnico a la especificación.");
-        }
-
-        // Validación estricta de repetitividad de ideas (Jaccard > 75%)
-        var simNarIo = calculateTextSimilarity(it.narrative, it.io);
-        var simNarAc = calculateTextSimilarity(it.narrative, it.criteria);
-
-            if (simNarIo >= 0.75 || simNarAc >= 0.75) {
-            issues.push("<b>Ideas repetitivas:</b> Estás reciclando la misma redacción en múltiples campos. Los Criterios de Aceptación deben ser reglas verificables, no un resumen de la Narrativa.");
-        }
-        }
-
-        // C. Validación de Duplicidad Interna (entre las 3 cajas del mismo requerimiento)
-        var simNarIo = calculateTextSimilarity(it.narrative, it.io);
-        var simNarAc = calculateTextSimilarity(it.narrative, it.criteria);
-        var simIoAc = calculateTextSimilarity(it.io, it.criteria);
-
-        if (simNarIo >= 0.85) {
-            issues.push("<b>Duplicidad interna detectada:</b> El texto de <i>Narrativa</i> y el de <i>Datos de Entrada, Reglas y Salidas</i> están duplicados o son prácticamente idénticos.");
-        }
-        if (simNarAc >= 0.85) {
-            issues.push("<b>Duplicidad interna detectada:</b> El texto de <i>Narrativa</i> y el de <i>Criterios de Aceptación</i> están duplicados o son prácticamente idénticos.");
-        }
-        if (simIoAc >= 0.85) {
-            issues.push("<b>Duplicidad interna detectada:</b> El texto de <i>Datos de Entrada, Reglas y Salidas</i> y el de <i>Criterios de Aceptación</i> están duplicados o son prácticamente idénticos.");
         }
 
         // D. Validación de Duplicidad Cruzada (contra otros requerimientos del mismo proyecto)
@@ -524,7 +504,6 @@ function validateAllNarratives() {
         }
 
         // E. Validación de Palabras Ambiguas
-        var combinedText = (it.narrative + " " + it.io + " " + it.criteria).toLowerCase();
         var foundAmbiguous = [];
         for (var w = 0; w < ambiguousWords.length; w++) {
             var regex = new RegExp("(?:^|\\s|[.,;:])" + ambiguousWords[w] + "(?:$|\\s|[.,;:])", "i");
@@ -536,22 +515,37 @@ function validateAllNarratives() {
             issues.push("<b>Ambigüedad detectada:</b> Contiene términos subjetivos no verificables (<b>" + foundAmbiguous.join(", ") + "</b>). Sustitúyelos por métricas exactas.");
         }
 
-        // Renderizado del dictamen por requerimiento
+        // Renderizado del dictamen interactivo por requerimiento
         if (issues.length === 0) {
             html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;">' +
                 '<b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS (Completo, Trazable, Sin Duplicidad y Sin Ambigüedades).' +
                 '</div>';
         } else {
-            html += '<div style="background:#f8d7da; border-left:5px solid #dc3545; padding:12px; margin-bottom:10px; border-radius:4px;">' +
-                '<b>❌ ' + escapeHtmlText(reqLabel) + ':</b> Requiere ajustes (' + issues.length + ' hallazgos):<ul style="margin-top:6px; margin-bottom:0;">';
-            for (var k = 0; k < issues.length; k++) {
-                html += '<li style="margin-bottom:4px;">' + issues[k] + '</li>';
-            }
-            html += '</ul></div>';
+            html += `<div ondblclick="scrollToNarrative('${cardId}')" title="Doble clic para ir a este requerimiento" style="margin-bottom: 8px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; cursor: pointer; border-left: 5px solid #dc3545; transition: transform 0.2s;">
+                <strong>❌ ${escapeHtmlText(reqLabel)}:</strong> Requiere ajustes (${issues.length} hallazgos)
+                <ul style="margin: 4px 0 0 20px; padding: 0;">` + issues.map(e => `<li style="margin-bottom:4px;">${e}</li>`).join('') + `</ul>
+                <small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz doble clic aquí para ir al requerimiento y corregirlo.</small>
+            </div>`;
         }
     }
 
     outBox.innerHTML = html;
+}
+
+// --- UX FUNCIONAL: SCROLL Y RESALTADO ---
+function scrollToNarrative(cardId) {
+    var card = document.getElementById(cardId);
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        var originalBg = card.style.backgroundColor || '#fff';
+        card.style.transition = 'background-color 0.5s ease';
+        card.style.backgroundColor = '#fff3cd'; 
+        
+        setTimeout(() => {
+            card.style.backgroundColor = originalBg;
+        }, 1500);
+    }
 }
 
 // --- 5. EXPORTAR SCRIPT WINDOWS Y DOCUMENTO WORD / JSON ---
