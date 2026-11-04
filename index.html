@@ -427,7 +427,17 @@
   }
 </script>
 <div style="text-align: right; padding: 15px; font-size: 0.8rem;">
-    <a href="javascript:void(0);" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none;">🔒 Acceso Admin</a>
+    <a href="javascript:void(0);" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none; margin-right: 15px;">🔒 Acceso Admin</a>
+    <a href="javascript:void(0);" onclick="cerrarSesionAdmin(); return false;" style="color: #dc3545; text-decoration: none;">🚪 Cerrar Sesión</a>
 </div>
+
+<script>
+    function cerrarSesionAdmin() {
+        localStorage.removeItem("admin_auth");
+        sessionStorage.removeItem("admin_auth");
+        alert("Sesión de administrador cerrada exitosamente. Los módulos 2 y 3 se ocultarán.");
+        location.reload(); // Recarga la página para aplicar los cambios
+    }
+</script>
 </body>
 </html>
