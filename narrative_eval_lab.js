@@ -1,6 +1,6 @@
 // ==========================================
 // MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
-// Archivo: narrative_eval_lab.js (Completo con compatibilidad de versiones anteriores)
+// Archivo: narrative_eval_lab.js (Completo con Adaptador Universal de Importación)
 // ==========================================
 
 var narrativeCounter = 0;
@@ -195,7 +195,7 @@ function addNarrativeForm(prefillData) {
     narrativeCounter++;
     var idx = narrativeCounter;
     
-    // Mapeo retrocompatible para soportar JSON de versiones anteriores
+    // Adaptador retrocompatible: Busca los valores sin importar la versión en que se exportaron
     var reqDefaultId = prefillData ? (prefillData.reqId || prefillData.id || prefillData.req_id || ("REQ-0" + idx)) : ("REQ-0" + idx);
     var reqName = prefillData ? (prefillData.reqName || prefillData.name || prefillData.nombre || "") : "";
     var objVal = prefillData ? (prefillData.objective || prefillData.obj || prefillData.objetivo || "") : "";
@@ -388,7 +388,7 @@ function collectAllNarratives() {
         var acEl = document.getElementById('nar-ac-' + cardId);
 
         list.push({
-            index: cardId,
+            index: cardId, 
             objective: objEl ? objEl.value.trim() : "",
             reqId: reqIdEl ? reqIdEl.value.trim() : "",
             reqName: nameEl ? nameEl.value.trim() : "",
@@ -517,7 +517,7 @@ function validateAllNarratives() {
             issues.push("<b>Ambigüedad detectada:</b> Contiene términos subjetivos no verificables (<b>" + foundAmbiguous.join(", ") + "</b>). Sustitúyelos por métricas exactas.");
         }
 
-        // Renderizado del dictamen interactivo por requerimiento
+        // Renderizado del dictamen interactivo por requerimiento (Con el window. en onclick)
         if (issues.length === 0) {
             html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;">' +
                 '<b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS (Completo, Trazable, Sin Duplicidad y Sin Ambigüedades).' +
@@ -602,6 +602,7 @@ function exportProjectJSON() {
     document.body.removeChild(link);
 }
 
+// 🚀 ADAPTADOR UNIVERSAL DE IMPORTACIÓN 
 function importProjectJSON(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -610,30 +611,51 @@ function importProjectJSON(event) {
     reader.onload = function(e) {
         try {
             var data = JSON.parse(e.target.result);
+            
             if (data.project && document.getElementById('nar-project')) {
                 document.getElementById('nar-project').value = data.project;
             }
             if (Array.isArray(data.objectivesCatalog)) {
                 businessObjectivesCatalog = data.objectivesCatalog;
             }
+            
             var container = document.getElementById('narratives-container');
             if (container) container.innerHTML = '';
             narrativeCounter = 0;
 
-            var reqs = data.requirements || [];
+            // Busca tu información sin importar la versión con la que se exportó
+            var reqs = [];
+            if (Array.isArray(data)) {
+                reqs = data;
+            } else if (data.requirements && Array.isArray(data.requirements)) {
+                reqs = data.requirements;
+            } else if (data.narratives && Array.isArray(data.narratives)) {
+                reqs = data.narratives;
+            } else if (data.items && Array.isArray(data.items)) {
+                reqs = data.items;
+            } else if (data.data && Array.isArray(data.data)) {
+                reqs = data.data;
+            }
+
             for (var i = 0; i < reqs.length; i++) {
                 addNarrativeForm(reqs[i]);
             }
+            
             if (reqs.length === 0) {
-                addNarrativeForm();
+                addNarrativeForm(); // Formularios por defecto si el archivo en serio estaba vacío
+                alert("⚠️ El archivo se leyó, pero no se encontraron requerimientos estructurados en su interior.");
+            } else {
+                alert("✅ Proyecto importado correctamente con " + reqs.length + " requerimiento(s).");
             }
-            alert("✅ Proyecto importado correctamente.");
+            
         } catch (err) {
             console.error(err);
-            alert("⚠️ El archivo JSON seleccionado no tiene un formato válido.");
+            alert("⚠️ El archivo JSON seleccionado no tiene un formato válido o está corrupto.");
         }
     };
     reader.readAsText(file, "UTF-8");
+    // Limpia el input para permitir importar el mismo archivo de nuevo si se necesita
+    event.target.value = '';
 }
 
 // --- UTILIDADES DE ESCAPE SEGURO ---
