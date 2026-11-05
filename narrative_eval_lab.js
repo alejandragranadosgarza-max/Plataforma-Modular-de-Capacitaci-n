@@ -1,6 +1,6 @@
 // ==========================================
 // MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
-// Archivo: narrative_eval_lab.js (Completo con filtros y UX de salto mediante 'onclick')
+// Archivo: narrative_eval_lab.js (Completo con filtros y UX de salto global)
 // ==========================================
 
 var narrativeCounter = 0;
@@ -386,7 +386,7 @@ function collectAllNarratives() {
         var acEl = document.getElementById('nar-ac-' + cardId);
 
         list.push({
-            index: cardId,
+            index: cardId, // Utilizamos el ID exacto de la tarjeta para anclar el doble clic
             objective: objEl ? objEl.value.trim() : "",
             reqId: reqIdEl ? reqIdEl.value.trim() : "",
             reqName: nameEl ? nameEl.value.trim() : "",
@@ -423,7 +423,7 @@ function validateAllNarratives() {
         var it = items[i];
         var issues = [];
         var reqLabel = (it.reqId || ('Req #' + it.index)) + ' - ' + (it.reqName || 'Sin nombre');
-        var cardId = 'nar-card-' + it.index; 
+        var cardId = 'nar-card-' + it.index; // Identificador exacto de la caja
 
         // A. Validación de Trazabilidad e Identificación
         if (!it.objective && businessObjectivesCatalog.length > 0) {
@@ -515,13 +515,13 @@ function validateAllNarratives() {
             issues.push("<b>Ambigüedad detectada:</b> Contiene términos subjetivos no verificables (<b>" + foundAmbiguous.join(", ") + "</b>). Sustitúyelos por métricas exactas.");
         }
 
-        // Renderizado del dictamen interactivo por requerimiento (Modificado a 'onclick')
+        // Renderizado del dictamen interactivo por requerimiento (Con el window. en onclick)
         if (issues.length === 0) {
             html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;">' +
                 '<b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS (Completo, Trazable, Sin Duplicidad y Sin Ambigüedades).' +
                 '</div>';
         } else {
-            html += `<div onclick="scrollToNarrative('${cardId}')" title="Clic para ir a este requerimiento" style="margin-bottom: 8px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; cursor: pointer; border-left: 5px solid #dc3545; transition: transform 0.2s;">
+            html += `<div onclick="window.scrollToNarrative('${cardId}')" title="Clic para ir a este requerimiento" style="margin-bottom: 8px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; cursor: pointer; border-left: 5px solid #dc3545; transition: transform 0.2s;">
                 <strong>❌ ${escapeHtmlText(reqLabel)}:</strong> Requiere ajustes (${issues.length} hallazgos)
                 <ul style="margin: 4px 0 0 20px; padding: 0;">` + issues.map(e => `<li style="margin-bottom:4px;">${e}</li>`).join('') + `</ul>
                 <small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz clic aquí para ir al requerimiento y corregirlo.</small>
@@ -532,8 +532,8 @@ function validateAllNarratives() {
     outBox.innerHTML = html;
 }
 
-// --- UX FUNCIONAL: SCROLL Y RESALTADO ---
-function scrollToNarrative(cardId) {
+// --- UX FUNCIONAL: SCROLL Y RESALTADO (Alcance Global) ---
+window.scrollToNarrative = function(cardId) {
     var card = document.getElementById(cardId);
     if (card) {
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -546,7 +546,7 @@ function scrollToNarrative(cardId) {
             card.style.backgroundColor = originalBg;
         }, 1500);
     }
-}
+};
 
 // --- 5. EXPORTAR SCRIPT WINDOWS Y DOCUMENTO WORD / JSON ---
 function exportProjectFoldersAndFiles() {
