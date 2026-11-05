@@ -453,5 +453,17 @@
         location.reload(); 
     }
 </script>
+<script>
+    // Ejecutar inmediatamente para asegurar visibilidad
+    (function() {
+        var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
+        if (esAdmin) {
+            var btn2 = document.getElementById("btn-mod-2");
+            var btn3 = document.getElementById("btn-mod-3");
+            if (btn2) btn2.style.display = "inline-block";
+            if (btn3) btn3.style.display = "inline-block";
+        }
+    })();
+</script>
 </body>
 </html>
