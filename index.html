@@ -24,12 +24,26 @@
 </header>
 
 <nav>
-    <button type="button" class="active" onclick="switchMainTab('tab-training', this)">Módulo 1: Capacitación</button>
+    <button type="button" onclick="switchMainTab('tab-training', this)">Módulo 1: Capacitación</button>
     <button type="button" id="btn-mod-2" style="display: none;" onclick="switchMainTab('tab-lab', this)">Módulo 2: Laboratorio ATDD</button>
     <button type="button" id="btn-mod-3" style="display: none;" onclick="switchMainTab('tab-narrative', this)">Módulo 3: Evaluación de Narrativas</button>
 </nav>
 
 <div class="container">
+
+    <!-- PANTALLA DE BIENVENIDA (Inicia activa por defecto) -->
+    <div id="tab-welcome" class="module active" style="text-align: center; padding: 40px 20px;">
+        <h2 style="color: #005691; font-size: 2rem; margin-bottom: 10px;">¡Bienvenido(a) a la Plataforma Modular de Capacitación!</h2>
+        <p style="font-size: 1.1rem; color: #555; max-width: 600px; margin: 0 auto 30px auto; line-height: 1.6;">
+            Diseñada para potenciar tus habilidades técnicas. Selecciona un módulo en la parte superior para comenzar tu entrenamiento en metodologías, evaluación de requerimientos funcionales o diseño de historias de usuario.
+        </p>
+        <img src="https://cdn-icons-png.flaticon.com/512/2942/2942784.png" alt="Capacitación y Evaluación" style="width: 150px; opacity: 0.8; margin-bottom: 20px;">
+    </div>
+
+    <!-- MÓDULO 1: CAPACITACIÓN (Ahora inicia oculto sin la clase 'active') -->
+    <div id="tab-training" class="module">
+        <h2>Cuestionario de evaluación (Niveles K1 y K2)</h2>
+
 
     <!-- MÓDULO 1: CAPACITACIÓN -->
     <div id="tab-training" class="module active">
