@@ -3,15 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma Modular de Capacitación y Evaluación de Historias de usuario o Narrativas</title>
+    <title>Plataforma Modular de Capacitación y Evaluación</title>
     
-    <!-- Enlace a tu hoja de estilos independiente (style.css) -->
     <link rel="stylesheet" href="style.css">
-
-    <!-- Importar Mammoth.js desde CDN para leer archivos .docx en el navegador -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-
-    <!-- Enlace al manifiesto de la PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6b21a8">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,28 +20,22 @@
 
 <nav>
     <button type="button" onclick="switchMainTab('tab-training', this)">Módulo 1: Capacitación</button>
-    <button type="button" id="btn-mod-2" style="display: none;" onclick="switchMainTab('tab-lab', this)">Módulo 2: Laboratorio ATDD</button>
-    <button type="button" id="btn-mod-3" style="display: none;" onclick="switchMainTab('tab-narrative', this)">Módulo 3: Evaluación de Narrativas</button>
+    <button type="button" id="btn-mod-req" style="display: none;" onclick="switchMainTab('tab-req-engineering', this)">Módulo 2: Ingeniería de Requerimientos</button>
 </nav>
 
 <div class="container">
 
     <!-- PANTALLA DE BIENVENIDA (Inicia activa por defecto) -->
     <div id="tab-welcome" class="module active" style="text-align: center; padding: 40px 20px;">
-        <h2 style="color: #005691; font-size: 2rem; margin-bottom: 10px;">¡Bienvenido(a) a la Plataforma Modular de Capacitación!</h2>
-        <p style="font-size: 1.1rem; color: #555; max-width: 600px; margin: 0 auto 30px auto; line-height: 1.6;">
-            Diseñada para potenciar tus habilidades técnicas. Selecciona un módulo en la parte superior para comenzar tu entrenamiento en metodologías, evaluación de requerimientos funcionales o diseño de historias de usuario.
+        <h2 style="color: #005691; font-size: 2.2rem; margin-bottom: 15px;">¡Bienvenido(a) a la Plataforma Modular de Capacitación!</h2>
+        <p style="font-size: 1.15rem; color: #555; max-width: 650px; margin: 0 auto 30px auto; line-height: 1.6;">
+            Diseñada para potenciar tus habilidades técnicas. Selecciona un módulo en la parte superior para comenzar tu entrenamiento en metodologías o ingresar al laboratorio de requerimientos.
         </p>
-        <img src="welcome_meeting.jpg" alt="Bienvenida Plataforma" style="max-width: 300px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
+        <img src="welcome_meeting.jpg" alt="Sesión Virtual BA" style="max-width: 600px; width: 100%; border-radius: 10px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); margin-bottom: 20px;">
     </div>
 
-    <!-- MÓDULO 1: CAPACITACIÓN (Ahora inicia oculto sin la clase 'active') -->
-    <div id="tab-training" class="module">
-        <h2>Cuestionario de evaluación (Niveles K1 y K2)</h2>
-
-
     <!-- MÓDULO 1: CAPACITACIÓN -->
-    <div id="tab-training" class="module active">
+    <div id="tab-training" class="module">
         <h2>Cuestionario de evaluación</h2>
         <p>Selecciona la disciplina y los capítulos o áreas de conocimiento que deseas evaluar:</p>
 
@@ -291,84 +280,104 @@
         </div>
     </div>
 
-    <!-- MÓDULO 2: LABORATORIO ATDD -->
-    <div id="tab-lab" class="module">
-        <h2>Laboratorio ATDD - Generación y Validación de Historias de Usuario</h2>
-        <p>Diseña tus Historias de Usuario bajo el estándar INVEST / 3C y valida criterios de aceptación (Positivo, Negativo y No Funcional):</p>
-        
-        <div class="card">
-            <label><b>Nombre del Proyecto Global:</b></label>
-            <input type="text" id="atdd-project" placeholder="Ej. Portal E-Commerce Corporativo" style="width: 100%; padding: 8px; margin-bottom: 15px;">
-            
-            <div id="stories-container"></div>
-
-            <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="button" class="btn" onclick="addStoryForm()">➕ Agregar otra Historia de Usuario</button>
-                <button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar Historias (INVEST / 3C)</button>
-                <button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportToExcelCSV()">📥 Exportar CSV (Excel / Jira)</button>
-                <button type="button" class="btn" style="background: #6c757d; color: white;" onclick="exportToJiraTXT()">📄 Exportar TXT Jira</button>
-                <label class="btn btn-outline" style="cursor: pointer; display: inline-block; margin: 0;">
-                    📁 Importar Archivo <input type="file" id="import-file" style="display: none;" onchange="handleFileImport(event)">
-                </label>
-            </div>
-        </div>
-
-        <div id="atdd-output" class="card" style="display:none; margin-top: 15px;"></div>
-    </div>
-
-    <!-- MÓDULO 3: EVALUACIÓN DE NARRATIVAS (CASCADA) -->
-    <div id="tab-narrative" class="module">
+    <!-- NUEVO MÓDULO UNIFICADO: INGENIERÍA DE REQUERIMIENTOS -->
+    <div id="tab-req-engineering" class="module">
         <div style="max-width: 1000px; margin: 0 auto;">
-            <h2>Evaluación y Gestión de Narrativas (Metodologías Tradicionales / Cascada)</h2>
-            <p>Valida especificaciones formales sin ambigüedades, entradas, salidas y criterios claros para Desarrollo y QA, generando carpetas físicas y documentos editables:</p>
+            <h2>Laboratorio de Ingeniería de Requerimientos</h2>
+            <p>Sube el archivo base de tu proyecto y elige el marco de trabajo adecuado para extraer y validar los requerimientos formales o historias de usuario:</p>
             
-            <div class="card" style="padding: 25px;">
-                <label style="display: block; margin-bottom: 8px;"><b>Nombre del Proyecto:</b></label>
-                <input type="text" id="nar-project" placeholder="Ej. Sistema de Nómina y Finanzas" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;">
-                
-                <div style="margin-bottom: 20px; background: #f3f0ff; padding: 15px; border-radius: 6px; border: 1px dashed #7c3aed;">
-                    <label style="display: block; margin-bottom: 5px; color: #5b21b6;"><b>🎯 Configuración: Cargar Plantilla Corporativa (.docx o .doc):</b></label>
-                    <input type="file" id="word-catalog-file" accept=".docx, .doc, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadWordTemplate(event)" style="font-size: 0.85rem;">
-                    <small style="display: block; color: #6b7280; margin-top: 4px;">Sube la plantilla oficial de Word (.docx o .doc) de tu empresa para extraer objetivos y necesidades automáticamente.</small>
+            <div class="card" style="padding: 25px; margin-bottom: 20px;">
+                <!-- PASO 1: Archivo Base -->
+                <div style="margin-bottom: 25px; background: #f3f0ff; padding: 20px; border-radius: 6px; border: 1px dashed #7c3aed;">
+                    <label style="display: block; margin-bottom: 8px; color: #5b21b6; font-size: 1.1rem;"><b>🎯 Paso 1: Carga el Documento de Contexto / Necesidades</b></label>
+                    <input type="file" id="context-file" accept=".docx, .doc, .txt, .json, .csv" onchange="handleContextUpload(event)" style="font-size: 0.95rem; margin-bottom: 10px;">
+                    <small style="display: block; color: #6b7280;">Sube el archivo corporativo (.docx, .csv, etc.) que contiene las necesidades del cliente. El sistema lo utilizará como base de referencia para el mapeo.</small>
                 </div>
 
-                <div id="narratives-container"></div>
+                <!-- PASO 2: Selección de Metodología -->
+                <label style="display: block; margin-bottom: 15px; font-weight: bold; font-size: 1.1rem; color: #333;">🎯 Paso 2: Elige la Metodología de Desarrollo</label>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    
+                    <!-- Tarjeta Ágil -->
+                    <div style="flex: 1; min-width: 250px; background: #fff; border: 2px solid #28a745; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s;" onclick="selectMethodology('agile')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <h3 style="color: #28a745; margin-top: 0;">🚀 Desarrollo Ágil (Scrum)</h3>
+                        <p style="font-size: 0.9rem; color: #555; text-align: left; margin-bottom: 15px;">Genera <b>Historias de Usuario (INVEST)</b>, enfócate en el valor del negocio, y define criterios de aceptación positivos, negativos y no funcionales.</p>
+                        <button class="btn" style="background: #28a745; color: white; width: 100%;">Seleccionar Ágil</button>
+                    </div>
 
-                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento Funcional</button>
-                    <button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Validar Narrativas (SRS)</button>
-                    <button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportProjectFoldersAndFiles()">📁 Descargar Script Windows y Doc Word</button>
-                    <button type="button" class="btn" style="background: #17a2b8; color: white;" onclick="exportProjectJSON()">📤 Exportar Proyecto (JSON)</button>
-                    <label class="btn" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0;">
-                        📥 Importar Proyecto <input type="file" id="import-project-file" accept=".json" style="display: none;" onchange="importProjectJSON(event)">
-                    </label>
+                    <!-- Tarjeta Cascada -->
+                    <div style="flex: 1; min-width: 250px; background: #fff; border: 2px solid #005691; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s;" onclick="selectMethodology('waterfall')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <h3 style="color: #005691; margin-top: 0;">🏛️ Cascada (SRS Tradicional)</h3>
+                        <p style="font-size: 0.9rem; color: #555; text-align: left; margin-bottom: 15px;">Define <b>Especificaciones Formales</b> con trazabilidad, entradas/salidas estructuradas y validación rigurosa sin ambigüedades.</p>
+                        <button class="btn" style="background: #005691; color: white; width: 100%;">Seleccionar Cascada</button>
+                    </div>
+
                 </div>
             </div>
 
-            <div id="nar-output" class="card" style="display:none; margin-top: 20px; padding: 25px;"></div>
+            <!-- Aquí se inyectarán los contenedores de las herramientas en la Fase 2 -->
+            <div id="unified-workspace" style="display:none; margin-top: 20px;">
+                <!-- El espacio de trabajo dividido se generará dinámicamente -->
+            </div>
+
         </div>
     </div>
 
 </div>
 
-<!-- Carga de Archivos de Preguntas y Lógica Principal (con ?v=2 para evitar caché viejo) -->
+<!-- Carga de Archivos -->
 <script src="questions_testing.js"></script>
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
 <script src="questions_scrum.js"></script>
 <script src="questions_ux.js"></script>
-<script src="app.js?v=final"></script>
-<script src="atdd_lab.js?v=2"></script>
-<script src="narrative_eval_lab.js?v=2"></script>
+<script src="app.js?v=4"></script>
+<script src="atdd_lab.js?v=4"></script>
+<script src="narrative_eval_lab.js?v=4"></script>
 
 <script>
+    // Actualización de la función de Tabs para soportar el nuevo menú
+    function switchMainTab(tabId, btn) {
+        var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
+        if (tabId === 'tab-req-engineering' && !esAdmin) {
+            alert("Acceso restringido. Debes iniciar sesión como administradora para entrar al Laboratorio.");
+            return;
+        }
+
+        var mods = document.querySelectorAll('.container > .module');
+        for (var i = 0; i < mods.length; i++) {
+            mods[i].classList.remove('active');
+        }
+        
+        var btns = document.querySelectorAll('nav button');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].classList.remove('active');
+        }
+        
+        var targetMod = document.getElementById(tabId);
+        if (targetMod) targetMod.classList.add('active');
+        if (btn) btn.classList.add('active');
+    }
+
+    // Funciones temporales (Fase 1) para dar feedback al hacer clic en las tarjetas de metodología
+    function handleContextUpload(event) {
+        var file = event.target.files[0];
+        if(file) alert("Fase 1: Archivo '" + file.name + "' listo para el motor de mapeo.");
+    }
+    
+    function selectMethodology(type) {
+        if(type === 'agile') {
+            alert("Fase 1: Se ha seleccionado Desarrollo Ágil. Próximamente se cargará el motor de Historias de Usuario.");
+        } else {
+            alert("Fase 1: Se ha seleccionado Desarrollo en Cascada. Próximamente se cargará el motor de Narrativas Formales.");
+        }
+    }
+
     function updateAllChapterCounts() {
-        // Conteo para Testing
         var tPool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
         var tCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
         for (var i = 0; i < tPool.length; i++) {
-            var q = tPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            var ch = (tPool[i].chapter !== undefined && tPool[i].chapter !== null) ? parseInt(tPool[i].chapter, 10) : Math.floor(tPool[i].id / 100);
             if (tCounts[ch] !== undefined) tCounts[ch]++;
         }
         for (var c = 1; c <= 6; c++) {
@@ -376,12 +385,10 @@
             if (el) el.innerText = "(" + tCounts[c] + " preguntas)";
         }
 
-        // Conteo para Business Analysis (BA)
         var bPool = (typeof baQuestions !== 'undefined') ? baQuestions : [];
         var bCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
         for (var i = 0; i < bPool.length; i++) {
-            var q = bPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            var ch = (bPool[i].chapter !== undefined && bPool[i].chapter !== null) ? parseInt(bPool[i].chapter, 10) : Math.floor(bPool[i].id / 100);
             if (bCounts[ch] !== undefined) bCounts[ch]++;
         }
         for (var c = 1; c <= 6; c++) {
@@ -389,12 +396,10 @@
             if (el) el.innerText = "(" + bCounts[c] + " preguntas)";
         }
 
-        // Conteo para Conceptos Técnicos
         var techPool = (typeof techQuestions !== 'undefined') ? techQuestions : [];
         var techCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < techPool.length; i++) {
-            var q = techPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            var ch = (techPool[i].chapter !== undefined && techPool[i].chapter !== null) ? parseInt(techPool[i].chapter, 10) : Math.floor(techPool[i].id / 100);
             if (techCounts[ch] !== undefined) techCounts[ch]++;
         }
         for (var c = 1; c <= 4; c++) {
@@ -402,12 +407,10 @@
             if (el) el.innerText = "(" + techCounts[c] + " preguntas)";
         }
 
-        // Conteo para Scrum
         var scrumPool = (typeof scrumQuestions !== 'undefined') ? scrumQuestions : [];
         var scrumCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < scrumPool.length; i++) {
-            var q = scrumPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            var ch = (scrumPool[i].chapter !== undefined && scrumPool[i].chapter !== null) ? parseInt(scrumPool[i].chapter, 10) : Math.floor(scrumPool[i].id / 100);
             if (scrumCounts[ch] !== undefined) scrumCounts[ch]++;
         }
         for (var c = 1; c <= 4; c++) {
@@ -415,12 +418,10 @@
             if (el) el.innerText = "(" + scrumCounts[c] + " preguntas)";
         }
 
-        // Conteo para UX
         var uxPool = (typeof questions_ux !== 'undefined') ? questions_ux : ((typeof uxQuestions !== 'undefined') ? uxQuestions : []);
         var uxCounts = {1:0, 2:0, 3:0, 4:0};
         for (var i = 0; i < uxPool.length; i++) {
-            var q = uxPool[i];
-            var ch = (q.chapter !== undefined && q.chapter !== null) ? parseInt(q.chapter, 10) : Math.floor(q.id / 100);
+            var ch = (uxPool[i].chapter !== undefined && uxPool[i].chapter !== null) ? parseInt(uxPool[i].chapter, 10) : Math.floor(uxPool[i].id / 100);
             if (uxCounts[ch] !== undefined) uxCounts[ch]++;
         }
         for (var c = 1; c <= 4; c++) {
@@ -431,6 +432,7 @@
 
     window.addEventListener('DOMContentLoaded', updateAllChapterCounts);
 </script>
+
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -440,6 +442,7 @@
     });
   }
 </script>
+
 <div style="text-align: right; padding: 15px; font-size: 0.8rem;">
     <a href="javascript:void(0);" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none; margin-right: 15px;">🔒 Acceso Admin</a>
     <a href="javascript:void(0);" onclick="cerrarSesionAdmin(); return false;" style="color: #dc3545; text-decoration: none;">🚪 Cerrar Sesión</a>
@@ -449,19 +452,15 @@
     function cerrarSesionAdmin() {
         localStorage.removeItem("admin_auth");
         sessionStorage.removeItem("admin_auth");
-        alert("Sesión de administrador cerrada exitosamente. Los módulos 2 y 3 se ocultarán.");
+        alert("Sesión de administrador cerrada exitosamente. El Módulo 2 se ocultará.");
         location.reload(); 
     }
-</script>
-<script>
-    // Ejecutar inmediatamente para asegurar visibilidad
+
     (function() {
         var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
         if (esAdmin) {
-            var btn2 = document.getElementById("btn-mod-2");
-            var btn3 = document.getElementById("btn-mod-3");
-            if (btn2) btn2.style.display = "inline-block";
-            if (btn3) btn3.style.display = "inline-block";
+            var btnReq = document.getElementById("btn-mod-req");
+            if (btnReq) btnReq.style.display = "inline-block";
         }
     })();
 </script>
