@@ -19,15 +19,19 @@ function switchMainTab(tabId, btn) {
         return;
     }
 
+    // Ocultar todos los módulos principales, incluyendo la pantalla de bienvenida
     var mods = document.querySelectorAll('.container > .module');
     for (var i = 0; i < mods.length; i++) {
         mods[i].classList.remove('active');
     }
+    
+    // Quitar la clase active de todos los botones de la barra de navegación
     var btns = document.querySelectorAll('nav button');
     for (var j = 0; j < btns.length; j++) {
         btns[j].classList.remove('active');
     }
     
+    // Mostrar el módulo solicitado y activar su botón
     var targetMod = document.getElementById(tabId);
     if (targetMod) targetMod.classList.add('active');
     if (btn) btn.classList.add('active');
