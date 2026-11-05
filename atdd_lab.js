@@ -117,9 +117,11 @@ function validateAllStories() {
         }
 
         if (specificErrors.length > 0) {
-            validationLog += `<div style="margin-bottom: 10px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 6px; border-left: 5px solid #dc3545;">
+            var storyId = card.id; // Captura el ID exacto de la historia
+            validationLog += `<div onclick="window.scrollToStory('${storyId}')" title="Clic para ir a esta historia" style="margin-bottom: 10px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 6px; border-left: 5px solid #dc3545; cursor: pointer; transition: transform 0.2s;">
                 <strong>❌ Historia #${num} (${huName || 'Sin Nombre'}): NO CUMPLE</strong>
                 <ul style="margin: 5px 0 0 20px; padding: 0;">` + specificErrors.map(e => `<li>${e}</li>`).join('') + `</ul>
+                <small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz clic aquí para ir a la historia y corregirla.</small>
             </div>`;
         } else {
             validationLog += `<div style="margin-bottom: 10px; color: #155724; background: #d4edda; padding: 10px; border-radius: 6px; border-left: 5px solid #28a745;">
@@ -334,3 +336,16 @@ function escapeHTML(str) {
         return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t;
     });
 }
+
+window.scrollToStory = function(cardId) {
+    var card = document.getElementById(cardId);
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var originalBg = card.style.backgroundColor || '#fdfefe';
+        card.style.transition = 'background-color 0.5s ease';
+        card.style.backgroundColor = '#fff3cd'; // Destello amarillo
+        setTimeout(() => {
+            card.style.backgroundColor = originalBg;
+        }, 1500);
+    }
+};
