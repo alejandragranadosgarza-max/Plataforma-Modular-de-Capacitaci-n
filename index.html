@@ -337,15 +337,15 @@
 
 </div>
 
-<!-- Carga de Archivos de Preguntas y Lógica Principal (con ?v=final para evitar caché viejo) -->
+<!-- Carga de Archivos de Preguntas y Lógica Principal (con ?v=2 para evitar caché viejo) -->
 <script src="questions_testing.js"></script>
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
 <script src="questions_scrum.js"></script>
 <script src="questions_ux.js"></script>
 <script src="app.js?v=final"></script>
-<script src="atdd_lab.js"></script>
-<script src="narrative_eval_lab.js"></script>
+<script src="atdd_lab.js?v=2"></script>
+<script src="narrative_eval_lab.js?v=2"></script>
 
 <script>
     function updateAllChapterCounts() {
@@ -436,7 +436,7 @@
         localStorage.removeItem("admin_auth");
         sessionStorage.removeItem("admin_auth");
         alert("Sesión de administrador cerrada exitosamente. Los módulos 2 y 3 se ocultarán.");
-        location.reload(); // Recarga la página para aplicar los cambios
+        location.reload(); 
     }
 </script>
 </body>
