@@ -1,6 +1,6 @@
 // ==========================================
 // MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
-// Archivo: narrative_eval_lab.js (Completo con filtros y UX de salto global)
+// Archivo: narrative_eval_lab.js (Completo con compatibilidad de versiones anteriores)
 // ==========================================
 
 var narrativeCounter = 0;
@@ -194,12 +194,14 @@ function addNarrativeForm(prefillData) {
 
     narrativeCounter++;
     var idx = narrativeCounter;
-    var reqDefaultId = (prefillData && prefillData.reqId) ? prefillData.reqId : ("REQ-0" + idx);
-    var reqName = (prefillData && prefillData.reqName) ? prefillData.reqName : "";
-    var objVal = (prefillData && prefillData.objective) ? prefillData.objective : "";
-    var descVal = (prefillData && prefillData.narrative) ? prefillData.narrative : "";
-    var ioVal = (prefillData && prefillData.io) ? prefillData.io : "";
-    var acVal = (prefillData && prefillData.criteria) ? prefillData.criteria : "";
+    
+    // Mapeo retrocompatible para soportar JSON de versiones anteriores
+    var reqDefaultId = prefillData ? (prefillData.reqId || prefillData.id || prefillData.req_id || ("REQ-0" + idx)) : ("REQ-0" + idx);
+    var reqName = prefillData ? (prefillData.reqName || prefillData.name || prefillData.nombre || "") : "";
+    var objVal = prefillData ? (prefillData.objective || prefillData.obj || prefillData.objetivo || "") : "";
+    var descVal = prefillData ? (prefillData.narrative || prefillData.desc || prefillData.descripcion || "") : "";
+    var ioVal = prefillData ? (prefillData.io || prefillData.inputs || prefillData.reglas || "") : "";
+    var acVal = prefillData ? (prefillData.criteria || prefillData.ac || prefillData.criterios || "") : "";
 
     var card = document.createElement('div');
     card.className = 'card narrative-item-card';
@@ -386,7 +388,7 @@ function collectAllNarratives() {
         var acEl = document.getElementById('nar-ac-' + cardId);
 
         list.push({
-            index: cardId, // Utilizamos el ID exacto de la tarjeta para anclar el doble clic
+            index: cardId,
             objective: objEl ? objEl.value.trim() : "",
             reqId: reqIdEl ? reqIdEl.value.trim() : "",
             reqName: nameEl ? nameEl.value.trim() : "",
@@ -423,7 +425,7 @@ function validateAllNarratives() {
         var it = items[i];
         var issues = [];
         var reqLabel = (it.reqId || ('Req #' + it.index)) + ' - ' + (it.reqName || 'Sin nombre');
-        var cardId = 'nar-card-' + it.index; // Identificador exacto de la caja
+        var cardId = 'nar-card-' + it.index; 
 
         // A. Validación de Trazabilidad e Identificación
         if (!it.objective && businessObjectivesCatalog.length > 0) {
@@ -515,7 +517,7 @@ function validateAllNarratives() {
             issues.push("<b>Ambigüedad detectada:</b> Contiene términos subjetivos no verificables (<b>" + foundAmbiguous.join(", ") + "</b>). Sustitúyelos por métricas exactas.");
         }
 
-        // Renderizado del dictamen interactivo por requerimiento (Con el window. en onclick)
+        // Renderizado del dictamen interactivo por requerimiento
         if (issues.length === 0) {
             html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;">' +
                 '<b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS (Completo, Trazable, Sin Duplicidad y Sin Ambigüedades).' +
