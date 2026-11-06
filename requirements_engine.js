@@ -1,14 +1,13 @@
 // ==========================================
 // MÓDULO UNIFICADO: INGENIERÍA DE REQUERIMIENTOS
 // Archivo: requirements_engine.js
-// Propósito: Pantalla dividida, visor de Word y transferencia de texto.
+// Propósito: Pantalla dividida, visor de Word optimizado y transferencia de texto.
 // ==========================================
 
 var extractedDocumentText = "";
 var activeMethodology = "";
-var lastInteractedFormIndex = 1; // Para saber a qué formulario enviar el texto
+var lastInteractedFormIndex = 1; 
 
-// 1. Guardián de Resolución (Solo Desktop)
 window.addEventListener('DOMContentLoaded', function() {
     var reqModuleBtn = document.getElementById('btn-mod-req');
     if (reqModuleBtn) {
@@ -22,7 +21,6 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 2. Manejador de Carga de Documento
 function handleContextUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -40,11 +38,10 @@ function handleContextUpload(event) {
             mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
                 .then(function(result) {
                     extractedDocumentText = result.value;
-                    alert("✅ Documento Word procesado. Elige la metodología para iniciar.");
+                    alert("✅ Documento procesado. Elige la metodología para iniciar.");
                     enableMethodologySelection();
                 })
                 .catch(function(error) {
-                    console.error("Error Word:", error);
                     alert("⚠️ No se pudo leer el archivo .docx.");
                 });
         };
@@ -59,7 +56,7 @@ function handleContextUpload(event) {
         };
         textReader.readAsText(file, "UTF-8");
     } else {
-        alert("⚠️ Formato no soportado (.docx, .txt, .csv, .json).");
+        alert("⚠️ Formato no soportado. Usa .docx, .txt, .csv, o .json.");
     }
 }
 
@@ -71,7 +68,6 @@ function enableMethodologySelection() {
     }
 }
 
-// 3. Selección de Metodología e Inyección de Formularios Reales
 function selectMethodology(type) {
     if (!extractedDocumentText) {
         alert("⚠️ Carga primero el Documento de Contexto.");
@@ -81,30 +77,35 @@ function selectMethodology(type) {
     activeMethodology = type;
     var workspace = document.getElementById('unified-workspace');
     
-    // Estilos dinámicos para arreglar las tablas apretadas del Word
-    var tableStyles = '<style>#document-content table { width: 100%; border-collapse: collapse; margin-bottom: 10px; } #document-content td, #document-content th { border: 1px solid #ccc; padding: 6px; word-break: break-word; }</style>';
+    // CSS INYECTADO: Ajuste de letra chica, tablas fluidas, y reseteo de márgenes
+    var docStyles = '<style>';
+    docStyles += '#document-content { font-size: 0.9rem; line-height: 1.5; color: #333; padding-right: 10px; }';
+    docStyles += '#document-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }';
+    docStyles += '#document-content td, #document-content th { border: 1px solid #ccc; padding: 6px; word-wrap: break-word; overflow-wrap: break-word; font-size: 0.85rem; }';
+    docStyles += '#document-content h1, #document-content h2, #document-content h3 { font-size: 1.1rem; color: #005691; margin-top: 15px; margin-bottom: 10px; }';
+    docStyles += '</style>';
     
-    var html = tableStyles + '<div style="display: flex; gap: 20px; align-items: flex-start;">';
+    var html = docStyles + '<div style="display: flex; gap: 20px; align-items: flex-start;">';
     
     // Panel Izquierdo: Visor
-    html += '<div id="document-viewer" style="flex: 1; max-width: 45%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); font-family: serif; line-height: 1.6;">';
-    html += '<h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px;">📄 Documento de Referencia</h3>';
+    html += '<div id="document-viewer" style="flex: 1; max-width: 45%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); font-family: Arial, sans-serif;">';
+    html += '<h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px; font-size: 1.1rem;">📄 Documento de Referencia</h3>';
     html += '<div id="document-content" style="position: relative;">' + extractedDocumentText + '</div>';
     html += '</div>';
 
-    // Panel Derecho: Integración con tus scripts actuales
+    // Panel Derecho: Formularios
     html += '<div id="form-builder" style="flex: 1; max-width: 55%; max-height: 80vh; overflow-y: auto; padding-right: 10px;">';
     
     if (type === 'agile') {
         html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
-        html += '<div id="stories-container"></div>'; // Contenedor que usa atdd_lab.js
+        html += '<div id="stories-container"></div>'; 
         html += '<div style="margin-top: 15px; display: flex; gap: 10px;">';
         html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
         html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
         html += '</div>';
     } else if (type === 'waterfall') {
         html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
-        html += '<div id="narratives-container"></div>'; // Contenedor que usa narrative_eval_lab.js
+        html += '<div id="narratives-container"></div>'; 
         html += '<div style="margin-top: 15px; display: flex; gap: 10px;">';
         html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
         html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Validar SRS</button>';
@@ -125,21 +126,15 @@ function selectMethodology(type) {
     var step1 = document.querySelector('#tab-req-engineering .card > div:nth-child(1)');
     if(step1) step1.style.display = 'none';
 
-    // Generar el primer formulario automáticamente dando tiempo al DOM para dibujar el contenedor
     setTimeout(function() {
-        if (type === 'agile' && typeof addStoryForm === 'function') {
-            addStoryForm();
-        }
-        if (type === 'waterfall' && typeof addNarrativeForm === 'function') {
-            addNarrativeForm();
-        }
-    }, 100); // 100 milisegundos de espera
+        if (type === 'agile' && typeof addStoryForm === 'function') addStoryForm();
+        if (type === 'waterfall' && typeof addNarrativeForm === 'function') addNarrativeForm();
+    }, 100);
 
     setupTextSelectionObserver();
     trackLastActiveForm();
 }
 
-// 4. Rastreo del formulario activo
 function trackLastActiveForm() {
     var builder = document.getElementById('form-builder');
     if (!builder) return;
@@ -152,7 +147,6 @@ function trackLastActiveForm() {
     });
 }
 
-// 5. Menú Flotante Inteligente
 function setupTextSelectionObserver() {
     var docContent = document.getElementById('document-content');
     var floatMenu = document.getElementById('floating-menu');
@@ -163,6 +157,16 @@ function setupTextSelectionObserver() {
         var selection = window.getSelection();
         var selectedText = selection.toString().trim();
 
+        // Evitar activar el menú si lo seleccionado pertenece a un título (h1, h2, h3, h4)
+        var anchorNode = selection.anchorNode;
+        if (anchorNode && anchorNode.parentElement) {
+            var parentTag = anchorNode.parentElement.tagName.toLowerCase();
+            if (['h1', 'h2', 'h3', 'h4'].includes(parentTag)) {
+                floatMenu.style.display = 'none';
+                return;
+            }
+        }
+
         if (selectedText.length > 0) {
             var rect = selection.getRangeAt(0).getBoundingClientRect();
             var top = rect.bottom + window.scrollY + 5;
@@ -171,18 +175,14 @@ function setupTextSelectionObserver() {
             floatMenu.style.top = top + 'px';
             floatMenu.style.left = left + 'px';
             
-            // [Código anterior: cálculo de posición y encabezado del menú]
-            
             var menuHtml = '<div style="font-size:0.75rem; color:#aaa; padding:2px 5px; border-bottom:1px solid #555;">Enviar a Fila #' + lastInteractedFormIndex + '</div>';
             
             if (activeMethodology === 'agile') {
-                // CAMPOS METODOLOGÍA ÁGIL (INVEST / ATDD)
                 menuHtml += '<button onclick="sendTextToField(\'st-epic\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Épica</button>';
                 menuHtml += '<button onclick="sendTextToField(\'st-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de la Historia</button>';
                 menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa (INVEST)</button>';
                 menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios de Aceptación (BDD)</button>';
             } else {
-                // CAMPOS METODOLOGÍA CASCADA (SRS TRADICIONAL)
                 menuHtml += '<button onclick="sendTextToField(\'nar-obj\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Objetivo Comercial</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-reqid\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Núm. Req (ID)</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de Requerimiento</button>';
@@ -210,23 +210,35 @@ function escapeQuotes(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, "\\n");
 }
 
-// 6. Motor de Inyección de Texto
 function sendTextToField(fieldPrefix, text) {
     var targetId = fieldPrefix + '-' + lastInteractedFormIndex;
     var inputEl = document.getElementById(targetId);
     
     if (inputEl) {
-        // Inyecta el texto agregando un espacio si ya había algo escrito
-        inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
+        if (inputEl.tagName.toLowerCase() === 'select') {
+            // Si el campo es un combobox (ej. Clave de Objetivo Comercial)
+            var options = inputEl.options;
+            var found = false;
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].text.toLowerCase().includes(text.toLowerCase()) || options[i].value.toLowerCase() === text.toLowerCase()) {
+                    inputEl.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) alert("⚠️ El texto seleccionado no coincide con ninguna opción del catálogo.");
+        } else {
+            // Si es un campo de texto normal (input o textarea)
+            inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
+        }
         
-        // Destello visual de éxito
         var originalBg = inputEl.style.backgroundColor;
         inputEl.style.transition = 'background-color 0.3s';
         inputEl.style.backgroundColor = '#d4edda';
         setTimeout(() => inputEl.style.backgroundColor = originalBg || '', 800);
         
     } else {
-        alert("⚠️ No se encontró el campo destino. Asegúrate de hacer clic dentro del formulario que deseas llenar antes de transferir texto.");
+        alert("⚠️ No se encontró el campo destino.");
     }
     
     document.getElementById('floating-menu').style.display = 'none';
