@@ -448,6 +448,9 @@
 </div>
 
 <script>
+    // 1. Iniciar sesión y desbloquear módulos en app.js
+
+    // 2. Cerrar sesión y ocultar
     function cerrarSesionAdmin() {
         localStorage.removeItem("admin_auth");
         sessionStorage.removeItem("admin_auth");
@@ -455,6 +458,7 @@
         location.reload(); 
     }
 
+    // 3. Revisar al cargar la página si ya está autorizado
     (function() {
         var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
         if (esAdmin) {
