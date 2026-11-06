@@ -125,9 +125,15 @@ function selectMethodology(type) {
     var step1 = document.querySelector('#tab-req-engineering .card > div:nth-child(1)');
     if(step1) step1.style.display = 'none';
 
-    // Generar el primer formulario automáticamente
-    if (type === 'agile' && typeof addStoryForm === 'function') addStoryForm();
-    if (type === 'waterfall' && typeof addNarrativeForm === 'function') addNarrativeForm();
+    // Generar el primer formulario automáticamente dando tiempo al DOM para dibujar el contenedor
+    setTimeout(function() {
+        if (type === 'agile' && typeof addStoryForm === 'function') {
+            addStoryForm();
+        }
+        if (type === 'waterfall' && typeof addNarrativeForm === 'function') {
+            addNarrativeForm();
+        }
+    }, 100); // 100 milisegundos de espera
 
     setupTextSelectionObserver();
     trackLastActiveForm();
@@ -191,3 +197,38 @@ function setupTextSelectionObserver() {
             floatMenu.style.display = 'none';
         }
     });
+
+    document.addEventListener('mousedown', function(e) {
+        if (floatMenu.style.display === 'flex' && !floatMenu.contains(e.target) && !docContent.contains(e.target)) {
+            floatMenu.style.display = 'none';
+            window.getSelection().removeAllRanges();
+        }
+    });
+}
+
+function escapeQuotes(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, "\\n");
+}
+
+// 6. Motor de Inyección de Texto
+function sendTextToField(fieldPrefix, text) {
+    var targetId = fieldPrefix + '-' + lastInteractedFormIndex;
+    var inputEl = document.getElementById(targetId);
+    
+    if (inputEl) {
+        // Inyecta el texto agregando un espacio si ya había algo escrito
+        inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
+        
+        // Destello visual de éxito
+        var originalBg = inputEl.style.backgroundColor;
+        inputEl.style.transition = 'background-color 0.3s';
+        inputEl.style.backgroundColor = '#d4edda';
+        setTimeout(() => inputEl.style.backgroundColor = originalBg || '', 800);
+        
+    } else {
+        alert("⚠️ No se encontró el campo destino. Asegúrate de hacer clic dentro del formulario que deseas llenar antes de transferir texto.");
+    }
+    
+    document.getElementById('floating-menu').style.display = 'none';
+    window.getSelection().removeAllRanges();
+}
