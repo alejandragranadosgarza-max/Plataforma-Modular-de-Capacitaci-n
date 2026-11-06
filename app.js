@@ -629,7 +629,7 @@ function verificarAccesoAdmin(event) {
         sessionStorage.setItem("admin_auth", "true");
         localStorage.setItem("admin_auth", "true");
         aplicarSeguridadModulos();
-        alert("¡Acceso concedido! Módulos 2 y 3 desbloqueados.");
+        alert("¡Acceso concedido! al Módulos 2.");
     } else if (password !== null) {
         alert("Contraseña incorrecta.");
     }
@@ -639,9 +639,7 @@ function aplicarSeguridadModulos() {
     var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
     if (esAdmin) {
         var btn2 = document.getElementById("btn-mod-2");
-        var btn3 = document.getElementById("btn-mod-3");
         if (btn2) btn2.style.display = "inline-block";
-        if (btn3) btn3.style.display = "inline-block";
     }
 }
 
