@@ -322,56 +322,16 @@
 
         </div>
     </div>
-
-</div>
-
-<!-- Carga de Archivos -->
 <script src="questions_testing.js"></script>
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
 <script src="questions_scrum.js"></script>
 <script src="questions_ux.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script src="requirements_engine.js"></script>
 
 <script>
-    // Actualización de la función de Tabs para soportar el nuevo menú
-    function switchMainTab(tabId, btn) {
-        var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
-        if (tabId === 'tab-req-engineering' && !esAdmin) {
-            alert("Acceso restringido. Debes iniciar sesión como administradora para entrar al Laboratorio.");
-            return;
-        }
-
-        var mods = document.querySelectorAll('.container > .module');
-        for (var i = 0; i < mods.length; i++) {
-            mods[i].classList.remove('active');
-        }
-        
-        var btns = document.querySelectorAll('nav button');
-        for (var j = 0; j < btns.length; j++) {
-            btns[j].classList.remove('active');
-        }
-        
-        var targetMod = document.getElementById(tabId);
-        if (targetMod) targetMod.classList.add('active');
-        if (btn) btn.classList.add('active');
-    }
-
-    // Funciones temporales (Fase 1) para dar feedback al hacer clic en las tarjetas de metodología
-    function handleContextUpload(event) {
-        var file = event.target.files[0];
-        if(file) alert("Fase 1: Archivo '" + file.name + "' listo para el motor de mapeo.");
-    }
-    
-    function selectMethodology(type) {
-        if(type === 'agile') {
-            alert("Fase 1: Se ha seleccionado Desarrollo Ágil. Próximamente se cargará el motor de Historias de Usuario.");
-        } else {
-            alert("Fase 1: Se ha seleccionado Desarrollo en Cascada. Próximamente se cargará el motor de Narrativas Formales.");
-        }
-    }
-
+    // Se mantiene solo la actualización de contadores y el Service Worker
     function updateAllChapterCounts() {
         var tPool = (typeof testingQuestions !== 'undefined') ? testingQuestions : [];
         var tCounts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
@@ -443,29 +403,8 @@
 </script>
 
 <div style="text-align: right; padding: 15px; font-size: 0.8rem;">
-    <a href="javascript:void(0);" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none; margin-right: 15px;">🔒 Acceso Admin</a>
-    <a href="javascript:void(0);" onclick="cerrarSesionAdmin(); return false;" style="color: #dc3545; text-decoration: none;">🚪 Cerrar Sesión</a>
+    <a href="#" onclick="verificarAccesoAdmin(event); return false;" style="color: #888; text-decoration: none; margin-right: 15px;">🔒 Acceso Admin</a>
+    <a href="#" onclick="cerrarSesionAdmin(); return false;" style="color: #dc3545; text-decoration: none;">🚪 Cerrar Sesión</a>
 </div>
-
-<script>
-    // 1. Iniciar sesión y desbloquear módulos en app.js
-
-    // 2. Cerrar sesión y ocultar
-    function cerrarSesionAdmin() {
-        localStorage.removeItem("admin_auth");
-        sessionStorage.removeItem("admin_auth");
-        alert("Sesión de administrador cerrada exitosamente. El Módulo 2 se ocultará.");
-        location.reload(); 
-    }
-
-    // 3. Revisar al cargar la página si ya está autorizado
-    (function() {
-        var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
-        if (esAdmin) {
-            var btnReq = document.getElementById("btn-mod-req");
-            if (btnReq) btnReq.style.display = "inline-block";
-        }
-    })();
-</script>
 </body>
 </html>
