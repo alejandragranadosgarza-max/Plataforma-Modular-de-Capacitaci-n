@@ -1,9 +1,9 @@
 // ==========================================
 // MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
-// Archivo: narrative_eval_lab.js (Completo con Adaptador Universal de Importación)
+// Archivo: narrative_eval_lab.js (Integración Fase 2 - Checkboxes, Prioridad y Scope Creep)
 // ==========================================
 
-var narrativeCounter = 0;
+var narrativeCount = 0;
 var businessObjectivesCatalog = [];
 
 // Inicializar el primer formulario automáticamente al cargar la página
@@ -14,278 +14,141 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- 1. CARGA DE PLANTILLA CORPORATIVA WORD (.DOCX / .DOC) Y OTROS FORMATOS ---
-function loadWordTemplate(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var fileName = file.name.toLowerCase();
-
-    if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.xml') || fileName.endsWith('.json')) {
-        loadBusinessObjectives(event);
-        return;
-    }
-
-    if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
-        alert("⚠️ Has seleccionado un archivo formato .doc antiguo (binario). Por favor, ábrelo en Word y guárdalo como 'Documento de Word (.docx)' para poder extraer sus tablas y objetivos automáticamente en el navegador.");
-        return;
-    }
-
-    if (typeof mammoth === 'undefined') {
-        alert("⚠️ La librería Mammoth.js no está disponible. Verifica tu conexión a internet.");
-        return;
-    }
-
-    var reader = new FileReader();
-    reader.onload = function(loadEvent) {
-        var arrayBuffer = loadEvent.target.result;
-        mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
-            .then(function(result) {
-                parseWordHtmlToObjectives(result.value);
-                populateAllObjectiveSelects();
-                alert("✅ ¡Plantilla Word procesada con éxito! Se cargaron " + businessObjectivesCatalog.length + " objetivos/necesidades en el catálogo de trazabilidad.");
-            })
-            .catch(function(error) {
-                console.error("Error al leer archivo Word:", error);
-                alert("⚠️ No se pudo leer el archivo .docx. Verifica que no esté dañado o protegido con contraseña.");
-            });
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function parseWordHtmlToObjectives(htmlStr) {
-    var tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlStr;
-    businessObjectivesCatalog = [];
-
-    var tables = tempDiv.querySelectorAll('table');
-    if (tables.length > 0) {
-        for (var t = 0; t < tables.length; t++) {
-            var rows = tables[t].querySelectorAll('tr');
-            for (var i = 0; i < rows.length; i++) {
-                var cols = rows[i].querySelectorAll('td, th');
-                if (cols.length >= 2) {
-                    var col0 = cols[0].textContent.trim();
-                    var col1 = cols[1].textContent.trim();
-                    if (col0.toLowerCase() === 'id' || col0.toLowerCase() === 'clave' || (col0.toLowerCase().indexOf('objetivo') !== -1 && i === 0)) {
-                        continue;
-                    }
-                    if (col0 || col1) {
-                        businessObjectivesCatalog.push({
-                            id: col0 || ("OBJ-0" + (businessObjectivesCatalog.length + 1)),
-                            desc: col1 || col0
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    if (businessObjectivesCatalog.length === 0) {
-        var elements = tempDiv.querySelectorAll('p, li');
-        for (var j = 0; j < elements.length; j++) {
-            var txt = elements[j].textContent.trim();
-            if (txt.length > 8) {
-                var parts = txt.split(/[:\-–]/);
-                if (parts.length >= 2 && parts[0].trim().length <= 15) {
-                    businessObjectivesCatalog.push({
-                        id: parts[0].trim(),
-                        desc: parts.slice(1).join(' ').trim()
-                    });
-                } else {
-                    businessObjectivesCatalog.push({
-                        id: "OBJ-0" + (businessObjectivesCatalog.length + 1),
-                        desc: txt.substring(0, 120)
-                    });
-                }
-            }
-        }
-    }
-}
-
-function loadBusinessObjectives(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var fileName = file.name.toLowerCase();
-    if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-        loadWordTemplate(event);
-        return;
-    }
-
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        var content = e.target.result;
-        businessObjectivesCatalog = [];
-
-        try {
-            if (fileName.endsWith('.json')) {
-                var data = JSON.parse(content);
-                var arr = Array.isArray(data) ? data : (data.objectives || []);
-                for (var i = 0; i < arr.length; i++) {
-                    businessObjectivesCatalog.push({
-                        id: arr[i].id || arr[i].clave || ("OBJ-0" + (i + 1)),
-                        desc: arr[i].description || arr[i].desc || arr[i].nombre || ""
-                    });
-                }
-            } else if (fileName.endsWith('.xml')) {
-                var parser = new DOMParser();
-                var xmlDoc = parser.parseFromString(content, "text/xml");
-                var nodes = xmlDoc.getElementsByTagName("objetivo");
-                if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("objective");
-                for (var j = 0; j < nodes.length; j++) {
-                    businessObjectivesCatalog.push({
-                        id: nodes[j].getAttribute("id") || ("OBJ-0" + (j + 1)),
-                        desc: nodes[j].textContent.trim()
-                    });
-                }
-            } else {
-                var lines = content.split(/\r?\n/);
-                for (var k = 0; k < lines.length; k++) {
-                    var line = lines[k].trim();
-                    if (!line) continue;
-                    var parts = line.split(/[,;|:\t]/);
-                    if (parts.length >= 2) {
-                        businessObjectivesCatalog.push({
-                            id: parts[0].trim(),
-                            desc: parts.slice(1).join(' ').trim()
-                        });
-                    } else {
-                        businessObjectivesCatalog.push({
-                            id: "OBJ-0" + (businessObjectivesCatalog.length + 1),
-                            desc: line
-                        });
-                    }
-                }
-            }
-            populateAllObjectiveSelects();
-            alert("✅ Catálogo cargado: " + businessObjectivesCatalog.length + " objetivos comerciales disponibles.");
-        } catch (err) {
-            console.error(err);
-            alert("⚠️ Error al procesar el archivo de catálogo.");
-        }
-    };
-    reader.readAsText(file, "UTF-8");
-}
-
-function buildObjectiveOptionsHtml(selectedValue) {
-    var html = '<option value="">-- Seleccione Objetivo Comercial --</option>';
-    for (var i = 0; i < businessObjectivesCatalog.length; i++) {
-        var obj = businessObjectivesCatalog[i];
-        var val = obj.id + " - " + obj.desc;
-        var isSel = (selectedValue && (selectedValue === val || selectedValue === obj.id)) ? ' selected' : '';
-        html += '<option value="' + escapeHtmlAttr(val) + '"' + isSel + '>' + escapeHtmlAttr(obj.id + ": " + obj.desc) + '</option>';
-    }
-    return html;
-}
-
-function populateAllObjectiveSelects() {
-    var selects = document.querySelectorAll('.nar-obj-select');
-    for (var i = 0; i < selects.length; i++) {
-        var currentVal = selects[i].value;
-        selects[i].innerHTML = buildObjectiveOptionsHtml(currentVal);
-    }
-}
-
-// --- 2. AGREGAR, OCULTAR Y ELIMINAR FORMULARIOS DE REQUERIMIENTOS FUNCIONALES ---
+// --- 1. GENERACIÓN DEL FORMULARIO DINÁMICO ---
 function addNarrativeForm(prefillData) {
+    narrativeCount++;
     var container = document.getElementById('narratives-container');
     if (!container) return;
-
-    narrativeCounter++;
-    var idx = narrativeCounter;
     
-    // Adaptador retrocompatible: Busca los valores sin importar la versión en que se exportaron
-    var reqDefaultId = prefillData ? (prefillData.reqId || prefillData.id || prefillData.req_id || ("REQ-0" + idx)) : ("REQ-0" + idx);
-    var reqName = prefillData ? (prefillData.reqName || prefillData.name || prefillData.nombre || "") : "";
-    var objVal = prefillData ? (prefillData.objective || prefillData.obj || prefillData.objetivo || "") : "";
-    var descVal = prefillData ? (prefillData.narrative || prefillData.desc || prefillData.descripcion || "") : "";
-    var ioVal = prefillData ? (prefillData.io || prefillData.inputs || prefillData.reglas || "") : "";
-    var acVal = prefillData ? (prefillData.criteria || prefillData.ac || prefillData.criterios || "") : "";
+    var cardId = 'nar-card-' + narrativeCount;
+    
+    // Si viene de una importación, usar sus datos. Si no, autogenerar ID.
+    var reqIdText = (prefillData && prefillData.reqId) ? prefillData.reqId : ('REQ-' + (narrativeCount < 10 ? '0' + narrativeCount : narrativeCount));
+    var reqName = (prefillData && prefillData.reqName) ? prefillData.reqName : "";
+    var reqPrio = (prefillData && prefillData.priority) ? prefillData.priority : "";
+    var descVal = (prefillData && prefillData.narrative) ? prefillData.narrative : "";
+    var ioVal = (prefillData && prefillData.io) ? prefillData.io : "";
+    var acVal = (prefillData && prefillData.criteria) ? prefillData.criteria : "";
+    var selectedObjs = (prefillData && prefillData.objectives) ? prefillData.objectives : []; // Array de IDs de objetivos
+    
+    var html = '<div class="card narrative-item-card" id="' + cardId + '" style="margin-bottom:20px; border-left: 4px solid #005691; padding: 20px;">';
+    html += '<div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">';
+    html += '<h4 style="color:#005691; margin:0;">📋 Requerimiento Funcional #' + narrativeCount + '</h4>';
+    html += '<button type="button" class="btn-outline" style="color:#dc3545; border-color:#dc3545; padding:2px 8px;" onclick="document.getElementById(\'' + cardId + '\').remove()">🗑️ Eliminar</button>';
+    html += '</div>';
+    
+    // Fila 1: ID, Nombre y Prioridad
+    html += '<div style="display:flex; gap:15px; margin-bottom:15px; flex-wrap:wrap;">';
+    html += '<div style="flex:1; min-width:100px;"><label style="font-weight:bold;">Núm. Req (ID):</label><input type="text" id="nar-reqid-' + narrativeCount + '" value="' + escapeHtmlAttr(reqIdText) + '" readonly style="background:#f1f3f5; width:100%;"></div>';
+    html += '<div style="flex:3; min-width:200px;"><label style="font-weight:bold;">Nombre de Requerimiento:</label><input type="text" id="nar-name-' + narrativeCount + '" value="' + escapeHtmlAttr(reqName) + '" placeholder="Propuesta de título editable..." style="width:100%;"></div>';
+    
+    // Selector de Prioridad
+    var sel1 = reqPrio === "1" ? "selected" : "";
+    var sel2 = reqPrio === "2" ? "selected" : "";
+    var sel3 = reqPrio === "3" ? "selected" : "";
+    html += '<div style="flex:1; min-width:120px;"><label style="font-weight:bold;">Prioridad:</label><select id="nar-prio-' + narrativeCount + '" style="width:100%;"><option value="">-- Nivel --</option><option value="1" ' + sel1 + '>Alta (1)</option><option value="2" ' + sel2 + '>Media (2)</option><option value="3" ' + sel3 + '>Baja (3)</option></select></div>';
+    html += '</div>';
 
-    var card = document.createElement('div');
-    card.className = 'card narrative-item-card';
-    card.id = 'nar-card-' + idx;
-    card.style.marginBottom = '20px';
-    card.style.borderLeft = '5px solid #7c3aed';
-    card.style.padding = '20px';
-
-    var html = '' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">' +
-            '<h3 style="margin:0; color:#5b21b6; font-size:1.05rem;">📋 Requerimiento Funcional #' + idx + '</h3>' +
-            '<div style="display:flex; gap:8px;">' +
-                '<button type="button" class="btn-outline" id="btn-toggle-nar-' + idx + '" onclick="toggleNarrativeBody(' + idx + ')">👁️ Ocultar</button>' +
-                '<button type="button" class="btn" style="background:#dc3545; color:white; padding:6px 12px;" onclick="removeNarrativeForm(' + idx + ')">🗑️ Eliminar</button>' +
-            '</div>' +
-        '</div>' +
-        '<div id="nar-body-' + idx + '">' +
-            '<div style="display:grid; grid-template-columns: 2fr 1fr 1.5fr; gap:12px; margin-bottom:15px;">' +
-                '<div>' +
-                    '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Clave de Objetivo Comercial:</label>' +
-                    '<select id="nar-obj-' + idx + '" class="nar-obj-select" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' +
-                        buildObjectiveOptionsHtml(objVal) +
-                    '</select>' +
-                '</div>' +
-                '<div>' +
-                    '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Núm. Req:</label>' +
-                    '<input type="text" id="nar-reqid-' + idx + '" value="' + escapeHtmlAttr(reqDefaultId) + '" placeholder="Ej. REQ-01" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' +
-                '</div>' +
-                '<div>' +
-                    '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Nombre de Requerimiento:</label>' +
-                    '<input type="text" id="nar-name-' + idx + '" value="' + escapeHtmlAttr(reqName) + '" placeholder="Ej. Cálculo Fiscal" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' +
-                '</div>' +
-            '</div>' +
-            '<div style="margin-bottom:15px;">' +
-                '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Narrativa (Descripción formal sin ambigüedades):</label>' +
-                '<textarea id="nar-desc-' + idx + '" rows="3" placeholder="El sistema debe procesar..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' + escapeHtmlText(descVal) + '</textarea>' +
-            '</div>' +
-            '<div style="margin-bottom:15px;">' +
-                '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Datos de Entrada, Reglas de Negocio y Salidas Esperadas:</label>' +
-                '<textarea id="nar-io-' + idx + '" rows="3" placeholder="Entradas: RFC, Monto... | Regla: Aplicar tasa 16%... | Salida: Recibo PDF..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' + escapeHtmlText(ioVal) + '</textarea>' +
-            '</div>' +
-            '<div>' +
-                '<label style="display:block; font-weight:bold; margin-bottom:5px; font-size:0.9rem;">Criterios de Aceptación / Verificación para QA y Desarrollo:</label>' +
-                '<textarea id="nar-ac-' + idx + '" rows="3" placeholder="1. Validar cálculo exacto a 2 decimales...\n2. Mostrar mensaje de error E-04 si el campo está vacío..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">' + escapeHtmlText(acVal) + '</textarea>' +
-            '</div>' +
-        '</div>';
-
-    card.innerHTML = html;
-    container.appendChild(card);
-}
-
-function toggleNarrativeBody(idx) {
-    var body = document.getElementById('nar-body-' + idx);
-    var btn = document.getElementById('btn-toggle-nar-' + idx);
-    if (!body) return;
-    if (body.style.display === 'none') {
-        body.style.display = 'block';
-        if (btn) btn.innerText = '👁️ Ocultar';
+    // Fila 2: Objetivos Comerciales 1:N (Checkboxes)
+    html += '<div style="margin-bottom:15px;">';
+    html += '<label style="font-weight:bold; color:#5b21b6;">🎯 Objetivos Comerciales (Trazabilidad Múltiple):</label>';
+    html += '<div id="nar-obj-container-' + narrativeCount + '" style="max-height:120px; overflow-y:auto; border:1px solid #ced4da; padding:12px; border-radius:6px; background:#fafafa;">';
+    
+    // Si la página se carga sola, usa loadedBusinessObjectives. Si se usa el importador de Cascada, usa businessObjectivesCatalog
+    var activeCatalog = (typeof businessObjectivesCatalog !== 'undefined' && businessObjectivesCatalog.length > 0) ? businessObjectivesCatalog : ((typeof loadedBusinessObjectives !== 'undefined') ? loadedBusinessObjectives : []);
+    
+    if (activeCatalog.length > 0) {
+        for(var i = 0; i < activeCatalog.length; i++) {
+            var obj = activeCatalog[i];
+            var objId = obj.id || obj.clave;
+            var objDesc = obj.description || obj.desc || "";
+            var isChecked = selectedObjs.includes(objId) ? "checked" : "";
+            html += '<label style="display:block; margin-bottom:6px; font-weight:normal; cursor:pointer;"><input type="checkbox" class="nar-obj-chk-' + narrativeCount + '" value="' + escapeHtmlAttr(objId) + '" ' + isChecked + '> <b>' + escapeHtmlText(objId) + ':</b> ' + escapeHtmlText(objDesc) + '</label>';
+        }
     } else {
-        body.style.display = 'none';
-        if (btn) btn.innerText = '👁️ Mostrar';
+        html += '<small style="color:#6c757d;">No hay objetivos detectados. Asegúrate de cargar el archivo base en el Paso 1.</small>';
     }
+    html += '</div></div>';
+
+    // Fila 3: Narrativa Principal y Control de Cambios (Scope Creep)
+    html += '<div style="margin-bottom:15px;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:5px;">';
+    html += '<label style="font-weight:bold; margin:0;">Narrativa Formal (Descripción inicial):</label>';
+    html += '<button type="button" class="btn-outline" style="font-size:0.75rem; padding:3px 8px;" onclick="habilitarCambioAlcance(' + narrativeCount + ')">🔄 Registrar Cambio de Alcance</button>';
+    html += '</div>';
+    html += '<textarea id="nar-desc-' + narrativeCount + '" placeholder="El sistema debe permitir..." style="resize:vertical; min-height:80px; width:100%;" ondblclick="this.style.height=\'80px\'" title="Doble clic en la esquina para restaurar el tamaño">' + escapeHtmlText(descVal) + '</textarea>';
+    html += '</div>';
+
+    // Contenedor Oculto para Scope Creep
+    html += '<div id="nar-change-container-' + narrativeCount + '" style="display:none; margin-bottom:15px; padding:15px; background:#fff3cd; border:1px dashed #ffc107; border-radius:6px;">';
+    html += '<label style="font-weight:bold; color:#856404; display:block; margin-bottom:5px;">⚠️ Nuevo Alcance Solicitado (Scope Creep Tracker):</label>';
+    html += '<textarea id="nar-newdesc-' + narrativeCount + '" placeholder="Escribe la nueva definición. El sistema validará el impacto del cambio..." style="resize:vertical; min-height:80px; width:100%; border-color:#ffc107;" ondblclick="this.style.height=\'80px\'" onchange="validarScopeCreep(' + narrativeCount + ')"></textarea>';
+    html += '</div>';
+
+    // Fila 4: Reglas y Verificación
+    html += '<div style="margin-bottom:15px;">';
+    html += '<label style="font-weight:bold;">Entradas, Reglas de Negocio y Salidas:</label>';
+    html += '<textarea id="nar-io-' + narrativeCount + '" style="resize:vertical; min-height:60px; width:100%;" ondblclick="this.style.height=\'60px\'">' + escapeHtmlText(ioVal) + '</textarea>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:10px;">';
+    html += '<label style="font-weight:bold;">Criterios QA (Verificación y Aceptación):</label>';
+    html += '<textarea id="nar-ac-' + narrativeCount + '" style="resize:vertical; min-height:60px; width:100%;" ondblclick="this.style.height=\'60px\'">' + escapeHtmlText(acVal) + '</textarea>';
+    html += '</div>';
+
+    html += '</div>'; 
+    
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    container.appendChild(tempDiv.firstChild);
 }
 
-function removeNarrativeForm(idx) {
-    var card = document.getElementById('nar-card-' + idx);
-    if (card) {
-        card.remove();
+// --- 2. AUDITORÍA DE SCOPE CREEP ---
+function habilitarCambioAlcance(id) {
+    var originalTextarea = document.getElementById('nar-desc-' + id);
+    if(!originalTextarea.value.trim()) {
+        alert("No hay una narrativa original redactada para someter a cambio.");
+        return;
+    }
+    
+    // Congela la versión original
+    originalTextarea.readOnly = true;
+    originalTextarea.style.background = '#e9ecef';
+    originalTextarea.style.color = '#6c757d';
+    
+    // Despliega la caja de nuevo requerimiento
+    var changeContainer = document.getElementById('nar-change-container-' + id);
+    changeContainer.style.display = 'block';
+    
+    document.getElementById('nar-newdesc-' + id).focus();
+}
+
+function validarScopeCreep(id) {
+    var original = document.getElementById('nar-desc-' + id).value.trim();
+    var nuevo = document.getElementById('nar-newdesc-' + id).value.trim();
+    
+    if(!nuevo) return;
+
+    var originalWords = original.split(/\s+/).length;
+    var nuevoWords = nuevo.split(/\s+/).length;
+    
+    // Regla de validación: si el volumen del texto se reduce a la mitad o crece más de un 50%
+    if (nuevoWords > originalWords * 1.5 || nuevoWords < originalWords * 0.5) {
+        alert("¡Ah caray! Esto es un riesgo porque me pedías una bicicleta y ahora quieres un coche último modelo 🚲 ➡️ 🚗.\n\nEl volumen y la estructura del nuevo alcance difieren drásticamente de la línea base. Esto impacta severamente la planificación del Sprint/Proyecto.");
     }
 }
 
 // --- 3. FUNCIONES AUXILIARES PARA DETECCIÓN DE INCOMPLETITUD Y DUPLICIDAD ---
 function normalizeTextForCompare(str) {
     if (!str) return "";
-    return str
-        .toLowerCase()
+    return str.toLowerCase()
         .replace(/[áäâà]/g, "a")
         .replace(/[éëêè]/g, "e")
         .replace(/[íïîì]/g, "i")
         .replace(/[óöôò]/g, "o")
         .replace(/[úüûù]/g, "u")
         .replace(/[^a-z0-9ñ\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+        .replace(/\s+/g, " ").trim();
 }
 
 function calculateTextSimilarity(str1, str2) {
@@ -315,9 +178,7 @@ function calculateTextSimilarity(str1, str2) {
         unionKeys[k1] = true;
         if (set2[k1]) intersection++;
     }
-    for (var k2 in set2) {
-        unionKeys[k2] = true;
-    }
+    for (var k2 in set2) { unionKeys[k2] = true; }
 
     var unionCount = Object.keys(unionKeys).length;
     return unionCount === 0 ? 0 : (intersection / unionCount);
@@ -334,11 +195,11 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
 
     var words = trimmed.split(/\s+/).filter(function(w) { return w.length > 0; });
     if (words.length < minWords) {
-        problems.push("El campo <b>" + fieldLabel + "</b> es demasiado breve o incompleto (contiene " + words.length + " palabras; se requieren al menos " + minWords + " palabras para una especificación formal).");
+        problems.push("El campo <b>" + fieldLabel + "</b> es demasiado breve o incompleto (contiene " + words.length + " palabras; se requieren al menos " + minWords + ").");
     }
 
     if (/[,;:\-\/\\]$/.test(trimmed) || /\.\.\.$/.test(trimmed) || /…$/.test(trimmed)) {
-        problems.push("<b>Texto inconcluso en " + fieldLabel + ":</b> Termina en puntuación abierta o puntos suspensivos (<code>" + escapeHtmlText(trimmed.slice(-12)) + "</code>), lo que indica una idea sin terminar.");
+        problems.push("<b>Texto inconcluso en " + fieldLabel + ":</b> Termina en puntuación abierta o puntos suspensivos (<code>" + escapeHtmlText(trimmed.slice(-12)) + "</code>).");
     }
 
     var cleanedEnd = trimmed.replace(/[.!?]+$/, "").trim();
@@ -355,14 +216,14 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
             "sean", "debe", "deben", "puede", "pueden", "permite", "permitir", "mostrar", "validar"
         ];
         if (danglingConnectors.indexOf(lastWord) !== -1) {
-            problems.push("<b>Oración trunca en " + fieldLabel + ":</b> El texto parece haberse quedado a medias porque termina con la palabra conectora o verbo incompleto <b>\"" + escapeHtmlText(lastWordMatch[1]) + "\"</b>.");
+            problems.push("<b>Oración trunca en " + fieldLabel + ":</b> El texto parece quedarse a medias terminando en <b>\"" + escapeHtmlText(lastWordMatch[1]) + "\"</b>.");
         }
     }
 
     var placeholderRegex = /\b(tbd|pendiente|por definir|por confirmar|completar|falta|todo|to-do|xxx+|zzz+)\b|\?\?\?/i;
     var matchPlaceholder = trimmed.match(placeholderRegex);
     if (matchPlaceholder) {
-        problems.push("<b>Información pendiente en " + fieldLabel + ":</b> Contiene el marcador temporal <b>\"" + escapeHtmlText(matchPlaceholder[0]) + "\"</b>.Toda especificación SRS debe estar cerrada antes de desarrollo.");
+        problems.push("<b>Información pendiente en " + fieldLabel + ":</b> Contiene el marcador temporal <b>\"" + escapeHtmlText(matchPlaceholder[0]) + "\"</b>.");
     }
 
     var openParens = (trimmed.match(/\(/g) || []).length;
@@ -378,18 +239,29 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
 function collectAllNarratives() {
     var cards = document.querySelectorAll('.narrative-item-card');
     var list = [];
+    
     for (var i = 0; i < cards.length; i++) {
-        var cardId = cards[i].id.replace('nar-card-', '');
-        var objEl = document.getElementById('nar-obj-' + cardId);
-        var reqIdEl = document.getElementById('nar-reqid-' + cardId);
-        var nameEl = document.getElementById('nar-name-' + cardId);
-        var descEl = document.getElementById('nar-desc-' + cardId);
-        var ioEl = document.getElementById('nar-io-' + cardId);
-        var acEl = document.getElementById('nar-ac-' + cardId);
+        // Extrae el ID real de la tarjeta (ej: "1", "2") usando split
+        var idSuffix = cards[i].id.split('-').pop(); 
+        
+        var reqIdEl = document.getElementById('nar-reqid-' + idSuffix);
+        var nameEl = document.getElementById('nar-name-' + idSuffix);
+        var prioEl = document.getElementById('nar-prio-' + idSuffix);
+        var descEl = document.getElementById('nar-desc-' + idSuffix);
+        var ioEl = document.getElementById('nar-io-' + idSuffix);
+        var acEl = document.getElementById('nar-ac-' + idSuffix);
+        
+        // Recolectar checkboxes marcados
+        var objCheckboxes = document.querySelectorAll('.nar-obj-chk-' + idSuffix + ':checked');
+        var selectedObjs = [];
+        for (var c = 0; c < objCheckboxes.length; c++) {
+            selectedObjs.push(objCheckboxes[c].value);
+        }
 
         list.push({
-            index: cardId, 
-            objective: objEl ? objEl.value.trim() : "",
+            index: idSuffix, 
+            objectives: selectedObjs,
+            priority: prioEl ? prioEl.value : "",
             reqId: reqIdEl ? reqIdEl.value.trim() : "",
             reqName: nameEl ? nameEl.value.trim() : "",
             narrative: descEl ? descEl.value.trim() : "",
@@ -409,7 +281,7 @@ function validateAllNarratives() {
     var items = collectAllNarratives();
 
     if (items.length === 0) {
-        outBox.innerHTML = '<p style="color:#dc3545; font-weight:bold;">⚠️ No hay requerimientos registrados. Haz clic en "➕ Agregar Requerimiento Funcional".</p>';
+        outBox.innerHTML = '<p style="color:#dc3545; font-weight:bold;">⚠️ No hay requerimientos registrados. Haz clic en "➕ Agregar Requerimiento".</p>';
         return;
     }
 
@@ -428,105 +300,77 @@ function validateAllNarratives() {
         var cardId = 'nar-card-' + it.index; 
 
         // A. Validación de Trazabilidad e Identificación
-        if (!it.objective && businessObjectivesCatalog.length > 0) {
-            issues.push("Falta vincular la <b>Clave de Objetivo Comercial</b> (Trazabilidad de negocio).");
+        if (!it.objectives || it.objectives.length === 0) {
+            issues.push("Falta marcar al menos un <b>Objetivo Comercial</b> (Trazabilidad 1:N).");
+        }
+        if (!it.priority) {
+            issues.push("Falta definir la <b>Prioridad</b> del requerimiento.");
         }
         if (!it.reqId || !it.reqName) {
             issues.push("Falta el identificador (<b>Núm. Req</b>) o el <b>Nombre del Requerimiento</b>.");
         }
 
-        // B. Validación de Completitud y Textos Inconclusos
+        // B. Validación de Completitud
         var narrativeIssues = checkFieldCompleteness(it.narrative, "Narrativa", 8);
         var ioIssues = checkFieldCompleteness(it.io, "Datos de Entrada, Reglas y Salidas", 6);
-        var criteriaIssues = checkFieldCompleteness(it.criteria, "Criterios de Aceptación / Verificación QA", 6);
+        var criteriaIssues = checkFieldCompleteness(it.criteria, "Criterios QA", 6);
         issues = issues.concat(narrativeIssues, ioIssues, criteriaIssues);
 
-        // Validación de palabras de relleno (Fluff Words)
+        // Validación de palabras de relleno
         var combinedText = (it.narrative + " " + it.io + " " + it.criteria).toLowerCase();
         var fluffWords = ["básicamente", "en general", "como es sabido", "para fines prácticos", "es importante que", "cosas", "detalles"];
         var foundFluff = [];
         for (var f = 0; f < fluffWords.length; f++) {
             var regexFluff = new RegExp("\\b" + fluffWords[f] + "\\b", "i");
-            if (regexFluff.test(combinedText)) {
-                foundFluff.push(fluffWords[f]);
-            }
+            if (regexFluff.test(combinedText)) foundFluff.push(fluffWords[f]);
         }
         if (foundFluff.length > 0) {
-            issues.push("<b>Información irrelevante detectada:</b> Elimina frases de relleno (<b>" + foundFluff.join(", ") + "</b>) que no aportan valor técnico a la especificación.");
+            issues.push("<b>Información irrelevante detectada:</b> Elimina frases de relleno (<b>" + foundFluff.join(", ") + "</b>).");
         }
 
-        // C. Validación de Duplicidad Interna (Similitud Estricta >= 0.75)
+        // C. Validación de Duplicidad Interna (Similitud >= 0.75)
         var simNarIo = calculateTextSimilarity(it.narrative, it.io);
         var simNarAc = calculateTextSimilarity(it.narrative, it.criteria);
         var simIoAc = calculateTextSimilarity(it.io, it.criteria);
 
-        if (simNarIo >= 0.75) {
-            issues.push("<b>Ideas repetitivas:</b> El texto de <i>Narrativa</i> y el de <i>Datos de Entrada, Reglas y Salidas</i> son demasiado similares. Aporta detalles técnicos, no un resumen.");
-        }
-        if (simNarAc >= 0.75) {
-            issues.push("<b>Ideas repetitivas:</b> Estás reciclando la misma redacción entre <i>Narrativa</i> y <i>Criterios de Aceptación</i>. Los criterios deben ser reglas verificables.");
-        }
-        if (simIoAc >= 0.75) {
-            issues.push("<b>Ideas repetitivas:</b> El texto de <i>Datos de Entrada, Reglas y Salidas</i> y el de <i>Criterios de Aceptación</i> están duplicados o son casi idénticos.");
-        }
+        if (simNarIo >= 0.75) issues.push("<b>Ideas repetitivas:</b> <i>Narrativa</i> y <i>Entradas/Reglas</i> son muy similares.");
+        if (simNarAc >= 0.75) issues.push("<b>Ideas repetitivas:</b> <i>Narrativa</i> y <i>Criterios QA</i> reciclan el mismo texto.");
+        if (simIoAc >= 0.75) issues.push("<b>Ideas repetitivas:</b> <i>Entradas/Reglas</i> y <i>Criterios QA</i> están duplicados.");
 
-        // Validar que el campo de Entradas/Reglas/Salidas no tenga solo una parte
-        if (it.io.trim().length >= 15) {
-            var ioLower = it.io.toLowerCase();
-            var hasInputRef = /(entrada|input|campo|dato|captura|recibe|parámetro|parametro)/i.test(ioLower);
-            var hasRuleRef = /(regla|cálculo|calculo|valida|condición|condicion|fórmula|formula|proceso|si\s|aplicar)/i.test(ioLower);
-            var hasOutputRef = /(salida|output|resultado|muestra|genera|retorna|respuesta|mensaje|archivo|reporte)/i.test(ioLower);
-            var ioPartsCount = (hasInputRef ? 1 : 0) + (hasRuleRef ? 1 : 0) + (hasOutputRef ? 1 : 0);
-            if (ioPartsCount < 2) {
-                issues.push("<b>Especificación incompleta en Datos de Entrada, Reglas y Salidas:</b> Asegúrate de detallar tanto las <i>Entradas</i> como las <i>Reglas de Negocio</i> y las <i>Salidas Esperadas</i>.");
-            }
-        }
-
-        // D. Validación de Duplicidad Cruzada (contra otros requerimientos del mismo proyecto)
+        // D. Validación de Duplicidad Cruzada
         for (var j = 0; j < items.length; j++) {
             if (i === j) continue;
             var other = items[j];
-            var otherLabel = other.reqId || ("Requerimiento #" + other.index);
+            var otherLabel = other.reqId || ("Req #" + other.index);
 
             if (it.reqId && other.reqId && normalizeTextForCompare(it.reqId) === normalizeTextForCompare(other.reqId)) {
-                issues.push("<b>Clave duplicada:</b> El número de requerimiento <b>" + escapeHtmlText(it.reqId) + "</b> está repetido en el Requerimiento #" + other.index + ".");
-            }
-            if (it.reqName && other.reqName && normalizeTextForCompare(it.reqName) === normalizeTextForCompare(other.reqName)) {
-                issues.push("<b>Nombre duplicado:</b> El nombre <b>\"" + escapeHtmlText(it.reqName) + "\"</b> ya se está utilizando en <b>" + escapeHtmlText(otherLabel) + "</b>.");
+                issues.push("<b>Clave duplicada:</b> El ID <b>" + escapeHtmlText(it.reqId) + "</b> se repite en " + otherLabel + ".");
             }
             if (it.narrative.length >= 15 && calculateTextSimilarity(it.narrative, other.narrative) >= 0.85) {
-                issues.push("<b>Narrativa duplicada entre requerimientos:</b> La descripción de la <i>Narrativa</i> es idéntica o muy similar a la de <b>" + escapeHtmlText(otherLabel) + "</b>.");
-            }
-            if (it.io.length >= 15 && calculateTextSimilarity(it.io, other.io) >= 0.85) {
-                issues.push("<b>Entradas/Reglas/Salidas duplicadas entre requerimientos:</b> El contenido de este campo repite la información de <b>" + escapeHtmlText(otherLabel) + "</b>.");
-            }
-            if (it.criteria.length >= 15 && calculateTextSimilarity(it.criteria, other.criteria) >= 0.85) {
-                issues.push("<b>Criterios de Aceptación duplicados entre requerimientos:</b> Los criterios de verificación son idénticos o casi idénticos a los de <b>" + escapeHtmlText(otherLabel) + "</b>.");
+                issues.push("<b>Narrativa clonada:</b> El texto es idéntico o casi idéntico al de <b>" + escapeHtmlText(otherLabel) + "</b>.");
             }
         }
 
-        // E. Validación de Palabras Ambiguas
+        // E. Ambigüedad
         var foundAmbiguous = [];
         for (var w = 0; w < ambiguousWords.length; w++) {
             var regex = new RegExp("(?:^|\\s|[.,;:])" + ambiguousWords[w] + "(?:$|\\s|[.,;:])", "i");
-            if (regex.test(combinedText)) {
-                foundAmbiguous.push(ambiguousWords[w]);
-            }
+            if (regex.test(combinedText)) foundAmbiguous.push(ambiguousWords[w]);
         }
         if (foundAmbiguous.length > 0) {
-            issues.push("<b>Ambigüedad detectada:</b> Contiene términos subjetivos no verificables (<b>" + foundAmbiguous.join(", ") + "</b>). Sustitúyelos por métricas exactas.");
+            issues.push("<b>Ambigüedad detectada:</b> Términos subjetivos (<b>" + foundAmbiguous.join(", ") + "</b>).");
         }
 
-        // Renderizado del dictamen interactivo por requerimiento (Con el window. en onclick)
+        // Renderizado Interactivo (Doble Clic para saltar)
         if (issues.length === 0) {
             html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;">' +
-                '<b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS (Completo, Trazable, Sin Duplicidad y Sin Ambigüedades).' +
+                '<b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS.' +
                 '</div>';
         } else {
-            html += `<div onclick="window.scrollToNarrative('${cardId}')" title="Clic para ir a este requerimiento" style="margin-bottom: 8px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; cursor: pointer; border-left: 5px solid #dc3545; transition: transform 0.2s;">
+            html += `<div ondblclick="scrollToNarrative('${cardId}')" title="Doble clic para ir a este requerimiento" style="margin-bottom: 8px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; cursor: pointer; border-left: 5px solid #dc3545; transition: transform 0.2s;">
                 <strong>❌ ${escapeHtmlText(reqLabel)}:</strong> Requiere ajustes (${issues.length} hallazgos)
                 <ul style="margin: 4px 0 0 20px; padding: 0;">` + issues.map(e => `<li style="margin-bottom:4px;">${e}</li>`).join('') + `</ul>
-                <small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz clic aquí para ir al requerimiento y corregirlo.</small>
+                <small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz doble clic aquí para saltar al requerimiento.</small>
             </div>`;
         }
     }
@@ -534,21 +378,16 @@ function validateAllNarratives() {
     outBox.innerHTML = html;
 }
 
-// --- UX FUNCIONAL: SCROLL Y RESALTADO (Alcance Global) ---
-window.scrollToNarrative = function(cardId) {
+function scrollToNarrative(cardId) {
     var card = document.getElementById(cardId);
     if (card) {
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
         var originalBg = card.style.backgroundColor || '#fff';
         card.style.transition = 'background-color 0.5s ease';
         card.style.backgroundColor = '#fff3cd'; 
-        
-        setTimeout(() => {
-            card.style.backgroundColor = originalBg;
-        }, 1500);
+        setTimeout(() => { card.style.backgroundColor = originalBg; }, 1500);
     }
-};
+}
 
 // --- 5. EXPORTAR SCRIPT WINDOWS Y DOCUMENTO WORD / JSON ---
 function exportProjectFoldersAndFiles() {
@@ -570,7 +409,8 @@ function exportProjectFoldersAndFiles() {
         var it = items[i];
         docContent += "----------------------------------------------------\r\n";
         docContent += "REQUERIMIENTO: " + (it.reqId || ("REQ-0" + it.index)) + " - " + (it.reqName || "Sin título") + "\r\n";
-        docContent += "OBJETIVO COMERCIAL: " + (it.objective || "No especificado") + "\r\n";
+        docContent += "OBJETIVOS VINCULADOS: " + (it.objectives && it.objectives.length > 0 ? it.objectives.join(", ") : "Ninguno") + "\r\n";
+        docContent += "PRIORIDAD: " + (it.priority ? "Nivel " + it.priority : "No definida") + "\r\n";
         docContent += "----------------------------------------------------\r\n";
         docContent += "1. NARRATIVA FORMAL:\r\n" + (it.narrative || "N/A") + "\r\n\r\n";
         docContent += "2. ENTRADAS, REGLAS Y SALIDAS:\r\n" + (it.io || "N/A") + "\r\n\r\n";
@@ -586,84 +426,11 @@ function exportProjectFoldersAndFiles() {
     document.body.removeChild(link);
 }
 
-function exportProjectJSON() {
-    var project = (document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "") || "Proyecto_SRS";
-    var data = {
-        project: project,
-        objectivesCatalog: businessObjectivesCatalog,
-        requirements: collectAllNarratives()
-    };
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    var link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = project.replace(/[^a-zA-Z0-9_-]/g, "_") + "_SRS.json";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// 🚀 ADAPTADOR UNIVERSAL DE IMPORTACIÓN 
-function importProjectJSON(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            var data = JSON.parse(e.target.result);
-            
-            if (data.project && document.getElementById('nar-project')) {
-                document.getElementById('nar-project').value = data.project;
-            }
-            if (Array.isArray(data.objectivesCatalog)) {
-                businessObjectivesCatalog = data.objectivesCatalog;
-            }
-            
-            var container = document.getElementById('narratives-container');
-            if (container) container.innerHTML = '';
-            narrativeCounter = 0;
-
-            // Busca tu información sin importar la versión con la que se exportó
-            var reqs = [];
-            if (Array.isArray(data)) {
-                reqs = data;
-            } else if (data.requirements && Array.isArray(data.requirements)) {
-                reqs = data.requirements;
-            } else if (data.narratives && Array.isArray(data.narratives)) {
-                reqs = data.narratives;
-            } else if (data.items && Array.isArray(data.items)) {
-                reqs = data.items;
-            } else if (data.data && Array.isArray(data.data)) {
-                reqs = data.data;
-            }
-
-            for (var i = 0; i < reqs.length; i++) {
-                addNarrativeForm(reqs[i]);
-            }
-            
-            if (reqs.length === 0) {
-                addNarrativeForm(); // Formularios por defecto si el archivo en serio estaba vacío
-                alert("⚠️ El archivo se leyó, pero no se encontraron requerimientos estructurados en su interior.");
-            } else {
-                alert("✅ Proyecto importado correctamente con " + reqs.length + " requerimiento(s).");
-            }
-            
-        } catch (err) {
-            console.error(err);
-            alert("⚠️ El archivo JSON seleccionado no tiene un formato válido o está corrupto.");
-        }
-    };
-    reader.readAsText(file, "UTF-8");
-    // Limpia el input para permitir importar el mismo archivo de nuevo si se necesita
-    event.target.value = '';
-}
-
-// --- UTILIDADES DE ESCAPE SEGURO ---
+// UTILIDADES DE ESCAPE SEGURO
 function escapeHtmlAttr(str) {
     if (!str) return "";
     return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-
 function escapeHtmlText(str) {
     if (!str) return "";
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
