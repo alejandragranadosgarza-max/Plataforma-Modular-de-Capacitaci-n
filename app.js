@@ -615,37 +615,52 @@ function parseWordHtmlContent(htmlStr) {
 }
 
 // ==========================================
-// CONTROL DE ACCESO ADMIN
+// CONTROL DE ACCESO ADMIN (LOGIN FLUIDO)
 // ==========================================
+
 function verificarAccesoAdmin(event) {
-    if (event) {
-        event.preventDefault();
-    }
+    if (event) event.preventDefault();
     
     var password = prompt("Ingresa la contraseña de administrador:");
-    var passwordReal = "HolaAGG"; 
-    
-    if (password === passwordReal) {
+    if (password === "HolaAGG") {
         sessionStorage.setItem("admin_auth", "true");
         localStorage.setItem("admin_auth", "true");
+        
+        // Muestra el módulo al instante sin recargar
         aplicarSeguridadModulos();
-        alert("¡Acceso concedido! al Módulos 2.");
+        alert("¡Acceso concedido! Módulo de Requerimientos desbloqueado.");
     } else if (password !== null) {
         alert("Contraseña incorrecta.");
     }
 }
 
+function cerrarSesionAdmin() {
+    localStorage.removeItem("admin_auth");
+    sessionStorage.removeItem("admin_auth");
+    
+    // Oculta el módulo y redirige a Capacitación al instante
+    var btnReq = document.getElementById("btn-mod-req");
+    if (btnReq) btnReq.style.display = "none";
+    
+    // Si estaba dentro del módulo oculto, lo saca
+    var currentTab = document.querySelector('.module.active');
+    if (currentTab && currentTab.id === 'tab-req-engineering') {
+        switchMainTab('tab-training', document.querySelector('nav button'));
+    }
+    
+    alert("Sesión de administrador cerrada exitosamente. El Módulo 2 se ha ocultado.");
+}
+
 function aplicarSeguridadModulos() {
     var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
+    var btnReq = document.getElementById("btn-mod-req");
+    
     if (esAdmin) {
-        var btn2 = document.getElementById("btn-mod-2");
-        if (btn2) btn2.style.display = "inline-block";
+        if (btnReq) btnReq.style.display = "inline-block";
+    } else {
+        if (btnReq) btnReq.style.display = "none";
     }
 }
 
-window.addEventListener('DOMContentLoaded', function() {
-    aplicarSeguridadModulos();
-    if (typeof updateAllChapterCounts === 'function') {
-        updateAllChapterCounts();
-    }
-});
+// Inicializar la visibilidad al cargar la página
+window.addEventListener('DOMContentLoaded', aplicarSeguridadModulos);
