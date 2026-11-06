@@ -165,16 +165,24 @@ function setupTextSelectionObserver() {
             floatMenu.style.top = top + 'px';
             floatMenu.style.left = left + 'px';
             
+            // [Código anterior: cálculo de posición y encabezado del menú]
+            
             var menuHtml = '<div style="font-size:0.75rem; color:#aaa; padding:2px 5px; border-bottom:1px solid #555;">Enviar a Fila #' + lastInteractedFormIndex + '</div>';
             
             if (activeMethodology === 'agile') {
-                menuHtml += '<button onclick="sendTextToField(\'story-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre</button>';
-                menuHtml += '<button onclick="sendTextToField(\'story-text\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Historia (Narrativa)</button>';
-                menuHtml += '<button onclick="sendTextToField(\'ac-pos\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Crit. Positivo</button>';
+                // CAMPOS METODOLOGÍA ÁGIL (INVEST / ATDD)
+                menuHtml += '<button onclick="sendTextToField(\'st-epic\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Épica</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de la Historia</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa (INVEST)</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios de Aceptación (BDD)</button>';
             } else {
+                // CAMPOS METODOLOGÍA CASCADA (SRS TRADICIONAL)
+                menuHtml += '<button onclick="sendTextToField(\'nar-obj\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Objetivo Comercial</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-reqid\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Núm. Req (ID)</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de Requerimiento</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa (SRS)</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa Formal</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Entradas/Reglas/Salidas</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios QA (Verificación)</button>';
             }
             
             floatMenu.innerHTML = menuHtml;
@@ -183,38 +191,3 @@ function setupTextSelectionObserver() {
             floatMenu.style.display = 'none';
         }
     });
-
-    document.addEventListener('mousedown', function(e) {
-        if (floatMenu.style.display === 'flex' && !floatMenu.contains(e.target) && !docContent.contains(e.target)) {
-            floatMenu.style.display = 'none';
-            window.getSelection().removeAllRanges();
-        }
-    });
-}
-
-function escapeQuotes(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, "\\n");
-}
-
-// 6. Motor de Inyección de Texto
-function sendTextToField(fieldPrefix, text) {
-    var targetId = fieldPrefix + '-' + lastInteractedFormIndex;
-    var inputEl = document.getElementById(targetId);
-    
-    if (inputEl) {
-        // Inyecta el texto agregando un espacio si ya había algo escrito
-        inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
-        
-        // Destello visual de éxito
-        var originalBg = inputEl.style.backgroundColor;
-        inputEl.style.transition = 'background-color 0.3s';
-        inputEl.style.backgroundColor = '#d4edda';
-        setTimeout(() => inputEl.style.backgroundColor = originalBg || '', 800);
-        
-    } else {
-        alert("⚠️ No se encontró el campo destino. Asegúrate de hacer clic dentro del formulario que deseas llenar antes de transferir texto.");
-    }
-    
-    document.getElementById('floating-menu').style.display = 'none';
-    window.getSelection().removeAllRanges();
-}
