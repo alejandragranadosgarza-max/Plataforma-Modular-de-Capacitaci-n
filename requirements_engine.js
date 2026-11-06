@@ -8,6 +8,9 @@ var extractedDocumentText = "";
 var activeMethodology = "";
 var lastInteractedFormIndex = 1; 
 
+// EXPORTACIÓN DE OBJETIVOS GLOBALES PARA NARRATIVE_EVAL_LAB
+window.loadedBusinessObjectives = [];
+
 window.addEventListener('DOMContentLoaded', function() {
     var reqModuleBtn = document.getElementById('btn-mod-req');
     if (reqModuleBtn) {
@@ -38,6 +41,10 @@ function handleContextUpload(event) {
             mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
                 .then(function(result) {
                     extractedDocumentText = result.value;
+                    
+                    // LLAMADA A LA FUNCIÓN DE EXTRACCIÓN DE OBJETIVOS
+                    parseBusinessObjectivesFromHTML(extractedDocumentText);
+                    
                     alert("✅ Documento procesado. Elige la metodología para iniciar.");
                     enableMethodologySelection();
                 })
@@ -59,6 +66,36 @@ function handleContextUpload(event) {
         alert("⚠️ Formato no soportado. Usa .docx, .txt, .csv, o .json.");
     }
 }
+
+// =========================================================================
+// FUNCIÓN NUEVA: Extractor de Objetivos Comerciales del Word para Checkboxes
+// =========================================================================
+function parseBusinessObjectivesFromHTML(htmlContent) {
+    // Aseguramos que la variable viva en el objeto global del navegador
+    window.loadedBusinessObjectives = [];
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    // Buscar todas las filas de todas las tablas
+    var rows = tempDiv.querySelectorAll('tr');
+    
+    for (var i = 1; i < rows.length; i++) {
+        var cols = rows[i].querySelectorAll('td');
+        // Si la fila tiene al menos 3 columnas (Clave, Título, Descripción)
+        if (cols.length >= 3) {
+            var id = cols[0].innerText.trim();
+            // Tomamos la Descripción como el texto de valor (Columna 3 o índice 2)
+            var desc = cols[2].innerText.trim();
+            
+            // Si parece una clave válida (ej. OBJC1, OBJ-01, o corto)
+            if (id.match(/^OBJ/i) || (id.length > 0 && id.length <= 15)) {
+                window.loadedBusinessObjectives.push({ id: id, description: desc });
+            }
+        }
+    }
+    console.log("Objetivos cargados globalmente:", window.loadedBusinessObjectives);
+}
+// =========================================================================
 
 function enableMethodologySelection() {
     var cards = document.querySelectorAll('#tab-req-engineering .card > div:nth-child(2) > div');
@@ -157,6 +194,7 @@ function setupTextSelectionObserver() {
         var selection = window.getSelection();
         var selectedText = selection.toString().trim();
 
+        // Evitar activar el menú si lo seleccionado pertenece a un título (h1, h2, h3, h4)
         var anchorNode = selection.anchorNode;
         if (anchorNode && anchorNode.parentElement) {
             var parentTag = anchorNode.parentElement.tagName.toLowerCase();
@@ -168,8 +206,11 @@ function setupTextSelectionObserver() {
 
         if (selectedText.length > 0) {
             var rect = selection.getRangeAt(0).getBoundingClientRect();
-            floatMenu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
-            floatMenu.style.left = (rect.left + window.scrollX) + 'px';
+            var top = rect.bottom + window.scrollY + 5;
+            var left = rect.left + window.scrollX;
+
+            floatMenu.style.top = top + 'px';
+            floatMenu.style.left = left + 'px';
             
             var menuHtml = '<div style="font-size:0.75rem; color:#aaa; padding:2px 5px; border-bottom:1px solid #555;">Enviar a Fila #' + lastInteractedFormIndex + '</div>';
             
@@ -179,11 +220,12 @@ function setupTextSelectionObserver() {
                 menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa (INVEST)</button>';
                 menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios de Aceptación (BDD)</button>';
             } else {
-                // Limpieza del menú Cascada: Se removió "ID" y "Objetivo Comercial"
                 menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de Requerimiento</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa Formal</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Entradas/Reglas/Salidas</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios QA (Verificación)</button>';
+                // Oculto por defecto en la vista, pero funcional
+                menuHtml += '<button onclick="sendTextToField(\'nar-prio\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:#777; cursor:pointer; text-align:left; padding:5px; font-size: 0.8rem;">➡️ Prioridad (1, 2, 3)</button>';
             }
             
             floatMenu.innerHTML = menuHtml;
@@ -210,13 +252,24 @@ function sendTextToField(fieldPrefix, text) {
     var inputEl = document.getElementById(targetId);
     
     if (inputEl) {
-        // Al inyectar el texto, actúa como un borrador editable que el usuario puede refinar
-        inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
+        if (inputEl.tagName.toLowerCase() === 'select') {
+            var options = inputEl.options;
+            var searchTxt = text.toString().toLowerCase().trim();
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].value.toLowerCase() === searchTxt || options[i].text.toLowerCase().includes(searchTxt)) {
+                    inputEl.selectedIndex = i;
+                    break;
+                }
+            }
+        } else {
+            inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
+        }
         
         var originalBg = inputEl.style.backgroundColor;
         inputEl.style.transition = 'background-color 0.3s';
         inputEl.style.backgroundColor = '#d4edda';
         setTimeout(() => inputEl.style.backgroundColor = originalBg || '', 800);
+        
     } else {
         alert("⚠️ No se encontró el campo destino.");
     }
