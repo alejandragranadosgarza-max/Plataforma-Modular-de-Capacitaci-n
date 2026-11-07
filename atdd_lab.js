@@ -348,12 +348,13 @@ window.scrollToStory = function(cardId) {
             card.style.backgroundColor = originalBg;
         }, 1500);
     }
-    // ==========================================
+// ==========================================
 // EXPORTAR E IMPORTAR PROYECTO ATDD (JSON)
 // ==========================================
 
 function exportAtddProjectJSON() {
-    var projectInput = document.getElementById('atdd-project') ? document.getElementById('atdd-project').value.trim() : "";
+    // Si no existe un campo de proyecto global en ATDD, asignamos un nombre genérico
+    var projectName = "Proyecto_ATDD";
     var cards = document.querySelectorAll('.story-set');
 
     if (cards.length === 0) {
@@ -362,13 +363,15 @@ function exportAtddProjectJSON() {
     }
 
     var projectData = {
-        projectName: projectInput || "Proyecto_ATDD_Sin_Nombre",
+        projectName: projectName,
         exportDate: new Date().toISOString(),
         stories: []
     };
 
     cards.forEach(function(card) {
         var idSuffix = card.id.split('-').pop();
+        
+        // Se buscan las clases estándar de ATDD para recolectar los datos
         var epic = card.querySelector('.hu-epic') ? card.querySelector('.hu-epic').value.trim() : "";
         var name = card.querySelector('.hu-name') ? card.querySelector('.hu-name').value.trim() : "";
         var feature = card.querySelector('.hu-feature') ? card.querySelector('.hu-feature').value.trim() : "";
@@ -376,21 +379,26 @@ function exportAtddProjectJSON() {
         var neg = card.querySelector('.hu-neg') ? card.querySelector('.hu-neg').value.trim() : "";
         var nf = card.querySelector('.hu-nf') ? card.querySelector('.hu-nf').value.trim() : "";
 
+        // Si los campos se llaman de otra forma en tu versión, usamos los IDs generados
+        if (!epic && document.getElementById('st-epic-' + idSuffix)) epic = document.getElementById('st-epic-' + idSuffix).value.trim();
+        if (!name && document.getElementById('st-name-' + idSuffix)) name = document.getElementById('st-name-' + idSuffix).value.trim();
+        if (!feature && document.getElementById('st-desc-' + idSuffix)) feature = document.getElementById('st-desc-' + idSuffix).value.trim();
+        if (!pos && document.getElementById('st-criteria-' + idSuffix)) pos = document.getElementById('st-criteria-' + idSuffix).value.trim();
+
         projectData.stories.push({
-            index: idSuffix,
             epic: epic,
             name: name,
             feature: feature,
-            positiveCriteria: pos,
-            negativeCriteria: neg,
-            nonFunctional: nf
+            pos: pos,
+            neg: neg,
+            nf: nf
         });
     });
 
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 4));
     var downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", projectData.projectName.replace(/[^a-zA-Z0-9_-]/g, "_") + "_ATDD.json");
+    downloadAnchorNode.setAttribute("download", projectData.projectName + ".json");
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -404,32 +412,58 @@ function importAtddProjectJSON(event) {
     reader.onload = function(e) {
         try {
             var data = JSON.parse(e.target.result);
-            
-            if (!data.stories || !Array.isArray(data.stories)) {
-                throw new Error("El archivo no tiene el formato de proyecto ATDD válido.");
-            }
+            if (!data.stories || !Array.isArray(data.stories)) throw new Error("Formato inválido.");
 
-            // Restaurar Nombre del Proyecto
-            var projInput = document.getElementById('atdd-project');
-            if (projInput) projInput.value = data.projectName || "";
-
-            // Limpiar contenedor actual
             var container = document.getElementById('stories-container');
             if (container) container.innerHTML = "";
-            storyCount = 0; // Reiniciar contador global del módulo ATDD
+            
+            if (typeof storyCount !== 'undefined') storyCount = 0; 
 
-            // Reconstruir historias
             data.stories.forEach(function(story) {
-                // Aquí llamamos a la función que ya existe en tu atdd_lab.js, 
-                // pasándole los datos pre-cargados
-                addStoryForm(story); 
+                // Genera la tarjeta usando tu función existente
+                if(typeof addStoryForm === 'function') {
+                    addStoryForm();
+                } else {
+                    console.error("No se encontró la función addStoryForm()");
+                    return;
+                }
+                
+                var currentId = (typeof storyCount !== 'undefined') ? storyCount : document.querySelectorAll('.story-set').length;
+                
+                // Intenta llenar los campos por ID (como los mapeamos en requirements_engine)
+                var epicEl = document.getElementById('st-epic-' + currentId);
+                var nameEl = document.getElementById('st-name-' + currentId);
+                var descEl = document.getElementById('st-desc-' + currentId);
+                var posEl = document.getElementById('st-criteria-' + currentId); 
+                
+                if(epicEl) epicEl.value = story.epic || "";
+                if(nameEl) nameEl.value = story.name || "";
+                if(descEl) descEl.value = story.feature || "";
+                if(posEl) posEl.value = story.pos || "";
+                
+                // Si la estructura DOM usa las clases hu-epic, hu-name, etc.
+                var lastCard = container.lastElementChild;
+                if(lastCard) {
+                    var inEpic = lastCard.querySelector('.hu-epic');
+                    var inName = lastCard.querySelector('.hu-name');
+                    var inFeat = lastCard.querySelector('.hu-feature');
+                    var inPos = lastCard.querySelector('.hu-pos');
+                    var inNeg = lastCard.querySelector('.hu-neg');
+                    var inNf = lastCard.querySelector('.hu-nf');
+                    
+                    if(inEpic && !inEpic.value) inEpic.value = story.epic || "";
+                    if(inName && !inName.value) inName.value = story.name || "";
+                    if(inFeat && !inFeat.value) inFeat.value = story.feature || "";
+                    if(inPos && !inPos.value) inPos.value = story.pos || "";
+                    if(inNeg && !inNeg.value) inNeg.value = story.neg || "";
+                    if(inNf && !inNf.value) inNf.value = story.nf || "";
+                }
             });
 
-            alert("✅ Proyecto ATDD importado exitosamente con " + data.stories.length + " historia(s).");
+            alert("✅ Proyecto importado exitosamente con " + data.stories.length + " historia(s).");
         } catch (error) {
-            alert("⚠️ Error al importar el archivo: " + error.message);
+            alert("⚠️ Error al importar: " + error.message);
         }
-        // Limpiar el input file para permitir volver a cargar el mismo archivo si es necesario
         event.target.value = ""; 
     };
     reader.readAsText(file);
