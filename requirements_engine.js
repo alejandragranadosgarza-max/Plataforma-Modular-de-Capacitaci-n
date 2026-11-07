@@ -1,14 +1,12 @@
 // ==========================================
 // MÓDULO UNIFICADO: INGENIERÍA DE REQUERIMIENTOS
 // Archivo: requirements_engine.js
-// Propósito: Pantalla dividida, visor de Word optimizado y transferencia de texto.
 // ==========================================
 
 var extractedDocumentText = "";
 var activeMethodology = "";
 var lastInteractedFormIndex = 1; 
 
-// EXPORTACIÓN DE OBJETIVOS GLOBALES PARA NARRATIVE_EVAL_LAB
 window.loadedBusinessObjectives = [];
 
 window.addEventListener('DOMContentLoaded', function() {
@@ -41,10 +39,7 @@ function handleContextUpload(event) {
             mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
                 .then(function(result) {
                     extractedDocumentText = result.value;
-                    
-                    // LLAMADA A LA FUNCIÓN DE EXTRACCIÓN DE OBJETIVOS
                     parseBusinessObjectivesFromHTML(extractedDocumentText);
-                    
                     alert("✅ Documento procesado. Elige la metodología para iniciar.");
                     enableMethodologySelection();
                 })
@@ -67,35 +62,23 @@ function handleContextUpload(event) {
     }
 }
 
-// =========================================================================
-// FUNCIÓN NUEVA: Extractor de Objetivos Comerciales del Word para Checkboxes
-// =========================================================================
 function parseBusinessObjectivesFromHTML(htmlContent) {
-    // Aseguramos que la variable viva en el objeto global del navegador
     window.loadedBusinessObjectives = [];
     var tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
-    
-    // Buscar todas las filas de todas las tablas
     var rows = tempDiv.querySelectorAll('tr');
     
     for (var i = 1; i < rows.length; i++) {
         var cols = rows[i].querySelectorAll('td');
-        // Si la fila tiene al menos 3 columnas (Clave, Título, Descripción)
         if (cols.length >= 3) {
             var id = cols[0].innerText.trim();
-            // Tomamos la Descripción como el texto de valor (Columna 3 o índice 2)
             var desc = cols[2].innerText.trim();
-            
-            // Si parece una clave válida (ej. OBJC1, OBJ-01, o corto)
             if (id.match(/^OBJ/i) || (id.length > 0 && id.length <= 15)) {
                 window.loadedBusinessObjectives.push({ id: id, description: desc });
             }
         }
     }
-    console.log("Objetivos cargados globalmente:", window.loadedBusinessObjectives);
 }
-// =========================================================================
 
 function enableMethodologySelection() {
     var cards = document.querySelectorAll('#tab-req-engineering .card > div:nth-child(2) > div');
@@ -114,7 +97,6 @@ function selectMethodology(type) {
     activeMethodology = type;
     var workspace = document.getElementById('unified-workspace');
     
-    // CSS INYECTADO: Ajuste de letra chica, tablas fluidas, y reseteo de márgenes
     var docStyles = '<style>';
     docStyles += '#document-content { font-size: 0.9rem; line-height: 1.5; color: #333; padding-right: 10px; }';
     docStyles += '#document-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }';
@@ -124,29 +106,36 @@ function selectMethodology(type) {
     
     var html = docStyles + '<div style="display: flex; gap: 20px; align-items: flex-start;">';
     
-    // Panel Izquierdo: Visor
     html += '<div id="document-viewer" style="flex: 1; max-width: 45%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); font-family: Arial, sans-serif;">';
+    
+    // MEJORA: Tarjeta de instrucciones visuales (UX)
+    html += '<div style="background: #e8f4fd; border-left: 4px solid #005691; padding: 12px; margin-bottom: 15px; font-size: 0.85rem; color: #004085;">';
+    html += '<b>💡 ¿Cómo extraer información?</b><br>';
+    html += '1. Subraya con tu ratón el texto o frase clave que necesitas de este documento.<br>';
+    html += '2. Aparecerá un menú flotante automáticamente.<br>';
+    html += '3. Selecciona el campo al que deseas enviarlo (Nombre, Narrativa, etc.). ¡No es necesario seleccionar párrafos enteros!';
+    html += '</div>';
+
     html += '<h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px; font-size: 1.1rem;">📄 Documento de Referencia</h3>';
     html += '<div id="document-content" style="position: relative;">' + extractedDocumentText + '</div>';
     html += '</div>';
 
-    // Panel Derecho: Formularios
     html += '<div id="form-builder" style="flex: 1; max-width: 55%; max-height: 80vh; overflow-y: auto; padding-right: 10px;">';
     
     if (type === 'agile') {
-        html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
-        html += '<div id="stories-container"></div>'; 
-        html += '<div style="margin-top: 15px; display: flex; gap: 10px;">';
+        html += '<div style="margin-bottom: 15px; display: flex; gap: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">';
         html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
         html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
         html += '</div>';
+        html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
+        html += '<div id="stories-container"></div>'; 
     } else if (type === 'waterfall') {
-        html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
-        html += '<div id="narratives-container"></div>'; 
-        html += '<div style="margin-top: 15px; display: flex; gap: 10px;">';
+        html += '<div style="margin-bottom: 15px; display: flex; gap: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">';
         html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
         html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Validar SRS</button>';
         html += '</div>';
+        html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
+        html += '<div id="narratives-container"></div>'; 
     }
     
     html += '<div id="atdd-output" class="card" style="display:none; margin-top:15px;"></div>';
@@ -194,7 +183,6 @@ function setupTextSelectionObserver() {
         var selection = window.getSelection();
         var selectedText = selection.toString().trim();
 
-        // Evitar activar el menú si lo seleccionado pertenece a un título (h1, h2, h3, h4)
         var anchorNode = selection.anchorNode;
         if (anchorNode && anchorNode.parentElement) {
             var parentTag = anchorNode.parentElement.tagName.toLowerCase();
@@ -224,7 +212,6 @@ function setupTextSelectionObserver() {
                 menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa Formal</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Entradas/Reglas/Salidas</button>';
                 menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios QA (Verificación)</button>';
-                // Oculto por defecto en la vista, pero funcional
                 menuHtml += '<button onclick="sendTextToField(\'nar-prio\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:#777; cursor:pointer; text-align:left; padding:5px; font-size: 0.8rem;">➡️ Prioridad (1, 2, 3)</button>';
             }
             
