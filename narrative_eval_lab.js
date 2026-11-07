@@ -1,11 +1,10 @@
 // ==========================================
 // MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
-// Archivo: narrative_eval_lab.js (Integración Fase 2 - Checkboxes 1:N, Insert Top, Scope Creep)
+// Archivo: narrative_eval_lab.js
 // ==========================================
 
 var narrativeCount = 0;
 
-// Inicializar el primer formulario automáticamente al cargar la página
 window.addEventListener('DOMContentLoaded', function() {
     var container = document.getElementById('narratives-container');
     if (container && container.children.length === 0) {
@@ -13,14 +12,12 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- 1. GENERACIÓN DEL FORMULARIO DINÁMICO ---
 function addNarrativeForm(prefillData) {
     narrativeCount++;
     var container = document.getElementById('narratives-container');
     if (!container) return;
     
     var cardId = 'nar-card-' + narrativeCount;
-    
     var reqIdText = (prefillData && prefillData.reqId) ? prefillData.reqId : ('REQ-' + (narrativeCount < 10 ? '0' + narrativeCount : narrativeCount));
     var reqName = (prefillData && prefillData.reqName) ? prefillData.reqName : "";
     var reqPrio = (prefillData && prefillData.priority) ? prefillData.priority : "";
@@ -35,24 +32,20 @@ function addNarrativeForm(prefillData) {
     html += '<button type="button" class="btn-outline" style="color:#dc3545; border-color:#dc3545; padding:2px 8px;" onclick="document.getElementById(\'' + cardId + '\').remove()">🗑️ Eliminar</button>';
     html += '</div>';
     
-    // Fila 1: ID, Nombre y Prioridad
     html += '<div style="display:flex; gap:15px; margin-bottom:15px; flex-wrap:wrap;">';
     html += '<div style="flex:1; min-width:100px;"><label style="font-weight:bold;">Núm. Req (ID):</label><input type="text" id="nar-reqid-' + narrativeCount + '" value="' + escapeHtmlAttr(reqIdText) + '" readonly style="background:#f1f3f5; width:100%;"></div>';
     html += '<div style="flex:3; min-width:200px;"><label style="font-weight:bold;">Nombre de Requerimiento:</label><input type="text" id="nar-name-' + narrativeCount + '" value="' + escapeHtmlAttr(reqName) + '" placeholder="Propuesta de título editable..." style="width:100%;"></div>';
     
-    // Selector de Prioridad (Funcional, pero oculto de la vista para limpieza)
     var sel1 = reqPrio === "1" ? "selected" : "";
     var sel2 = reqPrio === "2" ? "selected" : "";
     var sel3 = reqPrio === "3" ? "selected" : "";
     html += '<div style="display:none;"><select id="nar-prio-' + narrativeCount + '"><option value="">-- Nivel --</option><option value="1" ' + sel1 + '>Alta (1)</option><option value="2" ' + sel2 + '>Media (2)</option><option value="3" ' + sel3 + '>Baja (3)</option></select></div>';
     html += '</div>';
 
-    // Fila 2: Objetivos Comerciales 1:N (Checkboxes)
     html += '<div style="margin-bottom:15px;">';
     html += '<label style="font-weight:bold; color:#5b21b6;">🎯 Objetivos Comerciales (Trazabilidad Múltiple):</label>';
     html += '<div id="nar-obj-container-' + narrativeCount + '" style="max-height:120px; overflow-y:auto; border:1px solid #ced4da; padding:12px; border-radius:6px; background:#fafafa;">';
     
-    // Sincronización Directa con window.loadedBusinessObjectives 
     var activeCatalog = (typeof window.loadedBusinessObjectives !== 'undefined') ? window.loadedBusinessObjectives : [];
     
     if (activeCatalog.length > 0) {
@@ -68,7 +61,6 @@ function addNarrativeForm(prefillData) {
     }
     html += '</div></div>';
 
-    // Fila 3: Narrativa Principal y Control de Cambios (Scope Creep)
     html += '<div style="margin-bottom:15px;">';
     html += '<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:5px;">';
     html += '<label style="font-weight:bold; margin:0;">Narrativa Formal (Descripción inicial):</label>';
@@ -77,13 +69,11 @@ function addNarrativeForm(prefillData) {
     html += '<textarea id="nar-desc-' + narrativeCount + '" placeholder="El sistema debe permitir..." style="resize:vertical; min-height:80px; width:100%;" ondblclick="this.style.height=\'80px\'" title="Doble clic en la esquina para restaurar el tamaño">' + escapeHtmlText(descVal) + '</textarea>';
     html += '</div>';
 
-    // Contenedor Oculto para Scope Creep
     html += '<div id="nar-change-container-' + narrativeCount + '" style="display:none; margin-bottom:15px; padding:15px; background:#fff3cd; border:1px dashed #ffc107; border-radius:6px;">';
     html += '<label style="font-weight:bold; color:#856404; display:block; margin-bottom:5px;">⚠️ Nuevo Alcance Solicitado (Scope Creep Tracker):</label>';
     html += '<textarea id="nar-newdesc-' + narrativeCount + '" placeholder="Escribe la nueva definición. El sistema validará el impacto del cambio..." style="resize:vertical; min-height:80px; width:100%; border-color:#ffc107;" ondblclick="this.style.height=\'80px\'" onchange="validarScopeCreep(' + narrativeCount + ')"></textarea>';
     html += '</div>';
 
-    // Fila 4: Reglas y Verificación
     html += '<div style="margin-bottom:15px;">';
     html += '<label style="font-weight:bold;">Entradas, Reglas de Negocio y Salidas:</label>';
     html += '<textarea id="nar-io-' + narrativeCount + '" style="resize:vertical; min-height:60px; width:100%;" ondblclick="this.style.height=\'60px\'">' + escapeHtmlText(ioVal) + '</textarea>';
@@ -98,26 +88,21 @@ function addNarrativeForm(prefillData) {
     
     var tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
-    
-    // MEJORA: Inserta el formulario al inicio (hasta arriba de la lista)
     container.prepend(tempDiv.firstChild);
 }
 
-// --- 2. AUDITORÍA DE SCOPE CREEP ---
 function habilitarCambioAlcance(id) {
     var originalTextarea = document.getElementById('nar-desc-' + id);
     if(!originalTextarea.value.trim()) {
         alert("No hay una narrativa original redactada para someter a cambio.");
         return;
     }
-    
     originalTextarea.readOnly = true;
     originalTextarea.style.background = '#e9ecef';
     originalTextarea.style.color = '#6c757d';
     
     var changeContainer = document.getElementById('nar-change-container-' + id);
     changeContainer.style.display = 'block';
-    
     document.getElementById('nar-newdesc-' + id).focus();
 }
 
@@ -135,7 +120,6 @@ function validarScopeCreep(id) {
     }
 }
 
-// --- 3. FUNCIONES AUXILIARES PARA DETECCIÓN DE INCOMPLETITUD Y DUPLICIDAD ---
 function normalizeTextForCompare(str) {
     if (!str) return "";
     return str.toLowerCase()
@@ -175,7 +159,8 @@ function calculateTextSimilarity(str1, str2) {
     return unionCount === 0 ? 0 : (intersection / unionCount);
 }
 
-function checkFieldCompleteness(text, fieldLabel, minWords) {
+// LÓGICA DE COMPLETITUD RELAJADA PARA PEQUEÑOS PÁRRAFOS Y FRASES CLAVE
+function checkFieldCompleteness(text, fieldLabel) {
     var problems = [];
     var trimmed = (text || "").trim();
 
@@ -184,13 +169,14 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
         return problems;
     }
 
+    // Se redujo la exigencia mínima a 3 palabras para permitir reglas cortas inyectadas
     var words = trimmed.split(/\s+/).filter(function(w) { return w.length > 0; });
-    if (words.length < minWords) {
-        problems.push("El campo <b>" + fieldLabel + "</b> es demasiado breve o incompleto (contiene " + words.length + " palabras; se requieren al menos " + minWords + ").");
+    if (words.length < 3) {
+        problems.push("El campo <b>" + fieldLabel + "</b> es demasiado breve (contiene solo " + words.length + " palabras). ¿Está incompleto?");
     }
 
     if (/[,;:\-\/\\]$/.test(trimmed) || /\.\.\.$/.test(trimmed) || /…$/.test(trimmed)) {
-        problems.push("<b>Texto inconcluso en " + fieldLabel + ":</b> Termina en puntuación abierta o puntos suspensivos.");
+        problems.push("<b>Texto inconcluso en " + fieldLabel + ":</b> Termina en puntuación abierta.");
     }
 
     var placeholderRegex = /\b(tbd|pendiente|por definir|por confirmar|completar|falta|todo|to-do|xxx+|zzz+)\b|\?\?\?/i;
@@ -202,7 +188,6 @@ function checkFieldCompleteness(text, fieldLabel, minWords) {
     return problems;
 }
 
-// --- 4. RECOLECCIÓN Y VALIDACIÓN DE NARRATIVAS (ESTÁNDAR SRS / CASCADA) ---
 function collectAllNarratives() {
     var cards = document.querySelectorAll('.narrative-item-card');
     var list = [];
@@ -258,13 +243,13 @@ function validateAllNarratives() {
         var reqLabel = (it.reqId || ('Req #' + it.index)) + ' - ' + (it.reqName || 'Sin nombre');
         var cardId = 'nar-card-' + it.index; 
 
-        // Validación
         if (!it.objectives || it.objectives.length === 0) issues.push("Falta marcar al menos un <b>Objetivo Comercial</b> (Trazabilidad 1:N).");
         if (!it.reqId || !it.reqName) issues.push("Falta el identificador (<b>Núm. Req</b>) o el <b>Nombre del Requerimiento</b>.");
 
-        var narrativeIssues = checkFieldCompleteness(it.narrative, "Narrativa", 8);
-        var ioIssues = checkFieldCompleteness(it.io, "Datos de Entrada, Reglas y Salidas", 6);
-        var criteriaIssues = checkFieldCompleteness(it.criteria, "Criterios QA", 6);
+        // Se usa la validación relajada para textos cortos pero valiosos
+        var narrativeIssues = checkFieldCompleteness(it.narrative, "Narrativa");
+        var ioIssues = checkFieldCompleteness(it.io, "Datos de Entrada, Reglas y Salidas");
+        var criteriaIssues = checkFieldCompleteness(it.criteria, "Criterios QA");
         issues = issues.concat(narrativeIssues, ioIssues, criteriaIssues);
 
         var combinedText = (it.narrative + " " + it.io + " " + it.criteria).toLowerCase();
@@ -280,7 +265,6 @@ function validateAllNarratives() {
         var foundAmbiguous = ambiguousWords.filter(w => new RegExp("(?:^|\\s|[.,;:])" + w + "(?:$|\\s|[.,;:])", "i").test(combinedText));
         if (foundAmbiguous.length > 0) issues.push("<b>Ambigüedad detectada:</b> Términos subjetivos (<b>" + foundAmbiguous.join(", ") + "</b>).");
 
-        // Render
         if (issues.length === 0) {
             html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;"><b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS.</div>';
         } else {
@@ -291,7 +275,6 @@ function validateAllNarratives() {
             </div>`;
         }
     }
-
     outBox.innerHTML = html;
 }
 
@@ -306,9 +289,5 @@ function scrollToNarrative(cardId) {
     }
 }
 
-function escapeHtmlAttr(str) {
-    return str ? String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
-}
-function escapeHtmlText(str) {
-    return str ? String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
-}
+function escapeHtmlAttr(str) { return str ? String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+function escapeHtmlText(str) { return str ? String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
