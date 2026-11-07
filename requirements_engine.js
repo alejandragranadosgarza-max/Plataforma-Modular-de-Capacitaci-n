@@ -119,23 +119,24 @@ function selectMethodology(type) {
 
     html += '<div id="form-builder" style="flex: 1; max-width: 55%; max-height: 80vh; overflow-y: auto; padding-right: 10px;">';
     
-    // AQUÍ ESTÁN AMBOS: AGILE (Con botones JSON) Y WATERFALL (Cascada)
     if (type === 'agile') {
         html += '<div style="margin-bottom: 15px; display: flex; gap: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; flex-wrap: wrap;">';
         html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
         html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
         html += '<button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportToExcelCSV()">📊 Exportar CSV (Excel/Jira)</button>';
-        // Botones JSON integrados para ATDD
         html += '<button type="button" class="btn" style="background: #17a2b8; color: white;" onclick="exportAtddProjectJSON()">📤 Guardar (JSON)</button>';
         html += '<label class="btn" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0; font-weight: bold;">📥 Cargar (JSON) <input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
         html += '</div>';
         html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
         html += '<div id="stories-container"></div>'; 
     } else if (type === 'waterfall') {
-        // La sección de cascada que me mencionaste
-        html += '<div style="margin-bottom: 15px; display: flex; gap: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">';
+        html += '<div style="margin-bottom: 15px; display: flex; gap: 10px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; flex-wrap: wrap;">';
         html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
         html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Validar SRS</button>';
+        // HOMOLOGACIÓN DE BOTONES PARA CASCADA
+        html += '<button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportProjectFoldersAndFiles()">📊 Exportar Docx/Script</button>';
+        html += '<button type="button" class="btn" style="background: #17a2b8; color: white;" onclick="exportNarrativeProjectJSON()">📤 Guardar (JSON)</button>';
+        html += '<label class="btn" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0; font-weight: bold;">📥 Cargar (JSON) <input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
         html += '</div>';
         html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
         html += '<div id="narratives-container"></div>'; 
