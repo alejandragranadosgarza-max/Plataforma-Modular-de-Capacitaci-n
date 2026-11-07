@@ -119,39 +119,32 @@ function selectMethodology(type) {
 
     html += '<div id="form-builder" style="flex: 1; max-width: 55%; max-height: 80vh; overflow-y: auto; padding-right: 10px;">';
     
-    // AQUÍ ESTÁN AMBOS: AGILE Y WATERFALL (Con Íconos y Tooltips Nativos)
+    // Contenedor unificado para la botonera (sin wrap para evitar apilamiento)
+    var toolbarStyle = 'margin-bottom: 15px; display: flex; gap: 12px; align-items: center; background: #f8f9fa; padding: 12px 15px; border-radius: 8px; border: 1px solid #ddd; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow-x: auto;';
+    var btnStyle = 'font-size: 1.3rem; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: center;';
+
     if (type === 'agile') {
-        html += '<div style="margin-bottom: 15px; display: flex; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">';
-        
-        // Botones con Íconos y Tooltips (title)
-        html += '<button type="button" class="btn" title="Agregar una nueva Historia de Usuario" onclick="addStoryForm()" style="font-size: 1.2rem; padding: 6px 12px;">➕</button>';
-        html += '<button type="button" class="btn btn-accent" title="Validar historias contra el estándar INVEST" onclick="validateAllStories()" style="font-size: 1.2rem; padding: 6px 12px;">🔍</button>';
-        html += '<button type="button" class="btn" title="Exportar Historias en formato CSV para Excel o Jira" style="background: #28a745; color: white; font-size: 1.2rem; padding: 6px 12px;" onclick="exportToExcelCSV()">📊</button>';
-        html += '<button type="button" class="btn" title="Guardar una copia de respaldo del proyecto (JSON)" style="background: #17a2b8; color: white; font-size: 1.2rem; padding: 6px 12px;" onclick="exportAtddProjectJSON()">📤</button>';
-        html += '<label class="btn" title="Cargar un proyecto previamente guardado (JSON)" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0; font-weight: bold; font-size: 1.2rem; padding: 6px 12px;">📥<input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
-        
+        html += '<div style="' + toolbarStyle + '">';
+        html += '<button type="button" class="btn" title="Agregar una nueva Historia de Usuario" onclick="addStoryForm()" style="' + btnStyle + '">➕</button>';
+        html += '<button type="button" class="btn btn-accent" title="Validar historias contra el estándar INVEST" onclick="validateAllStories()" style="' + btnStyle + '">🔍</button>';
+        html += '<div style="width: 2px; height: 30px; background: #ccc; margin: 0 5px;"></div>'; // Separador visual
+        html += '<button type="button" class="btn" title="Exportar Historias en formato CSV para Excel o Jira" style="background: #28a745; color: white; ' + btnStyle + '" onclick="exportToExcelCSV()">📊</button>';
+        html += '<button type="button" class="btn" title="Guardar una copia de respaldo del proyecto (JSON)" style="background: #17a2b8; color: white; ' + btnStyle + '" onclick="exportAtddProjectJSON()">📤</button>';
+        html += '<label class="btn" title="Cargar un proyecto previamente guardado (JSON)" style="background: #ffc107; color: #212529; cursor: pointer; margin: 0; font-weight: bold; ' + btnStyle + '">📥<input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
         html += '</div>';
+        
         html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
         html += '<div id="stories-container"></div>'; 
     } else if (type === 'waterfall') {
-        html += '<div style="margin-bottom: 15px; display: flex; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">';
-        
-        // Botones con Íconos y Tooltips (title) para Cascada
-        html += '<button type="button" class="btn" title="Agregar un nuevo Requerimiento Funcional" onclick="addNarrativeForm()" style="font-size: 1.2rem; padding: 6px 12px;">➕</button>';
-        html += '<button type="button" class="btn btn-accent" title="Validar requerimientos contra el estándar SRS" onclick="validateAllNarratives()" style="font-size: 1.2rem; padding: 6px 12px;">🔍</button>';
-        html += '<button type="button" class="btn" title="Exportar Script Windows y Documento Word" style="background: #28a745; color: white; font-size: 1.2rem; padding: 6px 12px;" onclick="exportProjectFoldersAndFiles()">📁</button>';
-        html += '<button type="button" class="btn" title="Guardar una copia de respaldo del proyecto (JSON)" style="background: #17a2b8; color: white; font-size: 1.2rem; padding: 6px 12px;" onclick="exportNarrativeProjectJSON()">📤</button>';
-        html += '<label class="btn" title="Cargar un proyecto previamente guardado (JSON)" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0; font-weight: bold; font-size: 1.2rem; padding: 6px 12px;">📥<input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
-        
+        html += '<div style="' + toolbarStyle + '">';
+        html += '<button type="button" class="btn" title="Agregar un nuevo Requerimiento Funcional" onclick="addNarrativeForm()" style="' + btnStyle + '">➕</button>';
+        html += '<button type="button" class="btn btn-accent" title="Validar requerimientos contra el estándar SRS" onclick="validateAllNarratives()" style="' + btnStyle + '">🔍</button>';
+        html += '<div style="width: 2px; height: 30px; background: #ccc; margin: 0 5px;"></div>'; // Separador visual
+        html += '<button type="button" class="btn" title="Exportar Script Windows y Documento Word" style="background: #28a745; color: white; ' + btnStyle + '" onclick="exportProjectFoldersAndFiles()">📁</button>';
+        html += '<button type="button" class="btn" title="Guardar una copia de respaldo del proyecto (JSON)" style="background: #17a2b8; color: white; ' + btnStyle + '" onclick="exportNarrativeProjectJSON()">📤</button>';
+        html += '<label class="btn" title="Cargar un proyecto previamente guardado (JSON)" style="background: #ffc107; color: #212529; cursor: pointer; margin: 0; font-weight: bold; ' + btnStyle + '">📥<input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
         html += '</div>';
-        html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
-        html += '<div id="narratives-container"></div>'; 
-           
-        // HOMOLOGACIÓN DE BOTONES PARA CASCADA
-        html += '<button type="button" class="btn" style="background: #28a745; color: white;" onclick="exportProjectFoldersAndFiles()">📊 Exportar Docx/Script</button>';
-        html += '<button type="button" class="btn" style="background: #17a2b8; color: white;" onclick="exportNarrativeProjectJSON()">📤 Guardar (JSON)</button>';
-        html += '<label class="btn" style="background: #ffc107; color: #212529; cursor: pointer; display: inline-block; margin: 0; font-weight: bold;">📥 Cargar (JSON) <input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
-        html += '</div>';
+        
         html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
         html += '<div id="narratives-container"></div>'; 
     }
