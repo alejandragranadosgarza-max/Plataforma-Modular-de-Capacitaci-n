@@ -89,10 +89,63 @@ function enableMethodologySelection() {
 }
 
 function selectMethodology(type) {
+   function selectMethodology(type) {
+    // REGLA 1: Permitir avanzar sin archivo base si se va a importar un JSON
     if (!extractedDocumentText) {
-        alert("⚠️ Carga primero el Documento de Contexto.");
-        return;
+        var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
+        if (!proceed) return;
+        extractedDocumentText = "<p><i>No se cargó un documento base. Modo de captura manual o importación (JSON) activo.</i></p>";
     }
+
+    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
+    // Verificamos si hay formularios abiertos en alguno de los contenedores
+    var containerATDD = document.getElementById('stories-container');
+    var containerSRS = document.getElementById('narratives-container');
+    var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
+    var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
+
+    if (hasUnsavedATDD || hasUnsavedSRS) {
+        // Preguntamos al usuario si desea limpiar el lienzo o mantener el trabajo
+        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar en blanco, haz clic en 'Cancelar'.");
+        
+        if (!keepCache) {
+            // El usuario eligió borrar (Lienzo en blanco)
+            if (containerATDD) containerATDD.innerHTML = '';
+            if (containerSRS) containerSRS.innerHTML = '';
+            if (typeof storyCount !== 'undefined') storyCount = 0;
+            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+        }
+    } else {
+        // Si no había nada, aseguramos el reseteo por sanidad
+        var rootATDD = document.getElementById('atdd-lab');
+        var rootSRS = document.getElementById('narrative-lab');
+        if (rootATDD) rootATDD.innerHTML = '';
+        if (rootSRS) rootSRS.innerHTML = '';
+        if (typeof storyCount !== 'undefined') storyCount = 0;
+        if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+    }
+
+    activeMethodology = type;
+
+    // Lógica para dibujar el panel y ocultar el bloque de inicio
+    var leftPanel = document.getElementById('left-panel');
+    var rightPanel = document.getElementById('right-panel');
+    var setupContainer = document.getElementById('setup-container');
+    
+    if (setupContainer) setupContainer.style.display = 'none';
+    if (leftPanel) leftPanel.style.display = 'block';
+    if (rightPanel) rightPanel.style.display = 'block';
+
+    document.getElementById('doc-content').innerHTML = extractedDocumentText;
+
+    if (type === 'agile') {
+        initAgileWorkspace();
+    } else if (type === 'waterfall') {
+        initWaterfallWorkspace();
+    }
+
+    enableTextSelectionBinding();
+}
 
     activeMethodology = type;
     var workspace = document.getElementById('unified-workspace');
