@@ -5,7 +5,7 @@
 
 var extractedDocumentText = "";
 var activeMethodology = "";
-var lastInteractedFormIndex = 1; 
+var lastInteractedFormIndex = 1;
 
 window.loadedBusinessObjectives = [];
 
@@ -27,7 +27,7 @@ function handleContextUpload(event) {
     if (!file) return;
 
     var fileName = file.name.toLowerCase();
-    
+
     if (fileName.endsWith('.docx')) {
         if (typeof mammoth === 'undefined') {
             alert("⚠️ La librería Mammoth.js no está disponible.");
@@ -43,22 +43,25 @@ function handleContextUpload(event) {
                     alert("✅ Documento procesado. Elige la metodología para iniciar.");
                     enableMethodologySelection();
                 })
-                .catch(function(error) {
-                    alert("⚠️ No se pudo leer el archivo .docx.");
+                .catch(function(err) {
+                    console.error(err);
+                    alert("⚠️ Error al leer el archivo Word.");
                 });
         };
         reader.readAsArrayBuffer(file);
-    } else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
-        var textReader = new FileReader();
-        textReader.onload = function(e) {
+    } 
+    else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
+        var txtReader = new FileReader();
+        txtReader.onload = function(e) {
             var rawText = e.target.result;
-            extractedDocumentText = "<p>" + rawText.replace(/\n/g, "<br>") + "</p>";
-            alert("✅ Documento de texto procesado. Elige la metodología.");
+            extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeQuotes(rawText) + "</pre>";
+            parseBusinessObjectivesFromHTML(extractedDocumentText);
+            alert("✅ Archivo de texto procesado. Elige la metodología para iniciar.");
             enableMethodologySelection();
         };
-        textReader.readAsText(file, "UTF-8");
+        txtReader.readAsText(file);
     } else {
-        alert("⚠️ Formato no soportado. Usa .docx, .txt, .csv, o .json.");
+        alert("⚠️ Por favor, sube un archivo válido (.docx, .txt, .json, .csv).");
     }
 }
 
@@ -66,6 +69,7 @@ function parseBusinessObjectivesFromHTML(htmlContent) {
     window.loadedBusinessObjectives = [];
     var tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
+    
     var rows = tempDiv.querySelectorAll('tr');
     
     for (var i = 1; i < rows.length; i++) {
@@ -73,6 +77,7 @@ function parseBusinessObjectivesFromHTML(htmlContent) {
         if (cols.length >= 3) {
             var id = cols[0].innerText.trim();
             var desc = cols[2].innerText.trim();
+            
             if (id.match(/^OBJ/i) || (id.length > 0 && id.length <= 15)) {
                 window.loadedBusinessObjectives.push({ id: id, description: desc });
             }
@@ -81,60 +86,73 @@ function parseBusinessObjectivesFromHTML(htmlContent) {
 }
 
 function enableMethodologySelection() {
-    var cards = document.querySelectorAll('#tab-req-engineering .card > div:nth-child(2) > div');
-    for (var i = 0; i < cards.length; i++) {
-        cards[i].style.opacity = '1';
-        cards[i].style.pointerEvents = 'auto';
-    }
+    var agilBtn = document.querySelector('button[onclick="selectMethodology(\'agile\')"]');
+    var srsBtn = document.querySelector('button[onclick="selectMethodology(\'waterfall\')"]');
+    if (agilBtn) agilBtn.disabled = false;
+    if (srsBtn) srsBtn.disabled = false;
 }
 
 function selectMethodology(type) {
-   function selectMethodology(type) {
-    // REGLA 1: Permitir avanzar sin archivo base si se va a importar un JSON
+    var isManualMode = false;
+    
+    // REGLA DE NEGOCIO: Avanzar sin archivo
     if (!extractedDocumentText) {
         var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
         if (!proceed) return;
-        extractedDocumentText = "<p><i>No se cargó un documento base. Modo de captura manual o importación (JSON) activo.</i></p>";
+        extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
+        isManualMode = true; // Bandera para saber si usamos pantalla dividida o completa
     }
 
-    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
-    // Verificamos si hay formularios abiertos en alguno de los contenedores
+    // PROTECCIÓN CONTRA PÉRDIDA DE DATOS
     var containerATDD = document.getElementById('stories-container');
     var containerSRS = document.getElementById('narratives-container');
     var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
     var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
 
     if (hasUnsavedATDD || hasUnsavedSRS) {
-        // Preguntamos al usuario si desea limpiar el lienzo o mantener el trabajo
         var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar en blanco, haz clic en 'Cancelar'.");
         
         if (!keepCache) {
-            // El usuario eligió borrar (Lienzo en blanco)
             if (containerATDD) containerATDD.innerHTML = '';
             if (containerSRS) containerSRS.innerHTML = '';
             if (typeof storyCount !== 'undefined') storyCount = 0;
             if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
         }
     } else {
-        // Si no había nada, aseguramos el reseteo por sanidad
-        var rootATDD = document.getElementById('atdd-lab');
-        var rootSRS = document.getElementById('narrative-lab');
-        if (rootATDD) rootATDD.innerHTML = '';
-        if (rootSRS) rootSRS.innerHTML = '';
+        if (containerATDD) containerATDD.innerHTML = '';
+        if (containerSRS) containerSRS.innerHTML = '';
         if (typeof storyCount !== 'undefined') storyCount = 0;
         if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
     }
 
     activeMethodology = type;
 
-    // Lógica para dibujar el panel y ocultar el bloque de inicio
     var leftPanel = document.getElementById('left-panel');
     var rightPanel = document.getElementById('right-panel');
     var setupContainer = document.getElementById('setup-container');
     
     if (setupContainer) setupContainer.style.display = 'none';
-    if (leftPanel) leftPanel.style.display = 'block';
-    if (rightPanel) rightPanel.style.display = 'block';
+
+    // NUEVA REGLA EXPLORATORIA: 
+    // Si entró sin documento, ocultamos el panel izquierdo y el derecho ocupa el 100%
+    if (isManualMode) {
+        if (leftPanel) leftPanel.style.display = 'none';
+        if (rightPanel) {
+            rightPanel.style.display = 'block';
+            rightPanel.style.flex = '1';
+            rightPanel.style.width = '100%';
+        }
+    } else {
+        if (leftPanel) {
+            leftPanel.style.display = 'block';
+            leftPanel.style.flex = '1'; 
+            leftPanel.style.maxWidth = '40%';
+        }
+        if (rightPanel) {
+            rightPanel.style.display = 'block';
+            rightPanel.style.flex = '2';
+        }
+    }
 
     document.getElementById('doc-content').innerHTML = extractedDocumentText;
 
@@ -144,139 +162,128 @@ function selectMethodology(type) {
         initWaterfallWorkspace();
     }
 
-    enableTextSelectionBinding();
-}
-
-    activeMethodology = type;
-    var workspace = document.getElementById('unified-workspace');
-    
-    var docStyles = '<style>';
-    docStyles += '#document-content { font-size: 0.9rem; line-height: 1.5; color: #333; padding-right: 10px; }';
-    docStyles += '#document-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }';
-    docStyles += '#document-content td, #document-content th { border: 1px solid #ccc; padding: 6px; word-wrap: break-word; overflow-wrap: break-word; font-size: 0.85rem; }';
-    docStyles += '#document-content h1, #document-content h2, #document-content h3 { font-size: 1.1rem; color: #005691; margin-top: 15px; margin-bottom: 10px; }';
-    docStyles += '</style>';
-    
-    var html = docStyles + '<div style="display: flex; gap: 20px; align-items: flex-start;">';
-    
-    html += '<div id="document-viewer" style="flex: 1; max-width: 45%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); font-family: Arial, sans-serif;">';
-    html += '<div style="background: #e8f4fd; border-left: 4px solid #005691; padding: 12px; margin-bottom: 15px; font-size: 0.85rem; color: #004085;">';
-    html += '<b>💡 ¿Cómo extraer información?</b><br>';
-    html += '1. Subraya con tu ratón el texto o frase clave que necesitas de este documento.<br>';
-    html += '2. Aparecerá un menú flotante automáticamente.<br>';
-    html += '3. Selecciona el campo al que deseas enviarlo (Nombre, Narrativa, etc.). ¡No es necesario seleccionar párrafos enteros!';
-    html += '</div>';
-    html += '<h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px; font-size: 1.1rem;">📄 Documento de Referencia</h3>';
-    html += '<div id="document-content" style="position: relative;">' + extractedDocumentText + '</div>';
-    html += '</div>';
-
-    html += '<div id="form-builder" style="flex: 1; max-width: 55%; max-height: 80vh; overflow-y: auto; padding-right: 10px;">';
-    
-    // Contenedor unificado para la botonera (sin wrap para evitar apilamiento)
-    var toolbarStyle = 'margin-bottom: 15px; display: flex; gap: 12px; align-items: center; background: #f8f9fa; padding: 12px 15px; border-radius: 8px; border: 1px solid #ddd; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow-x: auto;';
-    var btnStyle = 'font-size: 1.3rem; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: center;';
-
-    if (type === 'agile') {
-        html += '<div style="' + toolbarStyle + '">';
-        html += '<button type="button" class="btn" title="Agregar una nueva Historia de Usuario" onclick="addStoryForm()" style="' + btnStyle + '">➕</button>';
-        html += '<button type="button" class="btn btn-accent" title="Validar historias contra el estándar INVEST" onclick="validateAllStories()" style="' + btnStyle + '">🔍</button>';
-        html += '<div style="width: 2px; height: 30px; background: #ccc; margin: 0 5px;"></div>'; // Separador visual
-        html += '<button type="button" class="btn" title="Exportar Historias en formato CSV para Excel o Jira" style="background: #28a745; color: white; ' + btnStyle + '" onclick="exportToExcelCSV()">📊</button>';
-        html += '<button type="button" class="btn" title="Guardar una copia de respaldo del proyecto (JSON)" style="background: #17a2b8; color: white; ' + btnStyle + '" onclick="exportAtddProjectJSON()">📤</button>';
-        html += '<label class="btn" title="Cargar un proyecto previamente guardado (JSON)" style="background: #ffc107; color: #212529; cursor: pointer; margin: 0; font-weight: bold; ' + btnStyle + '">📥<input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
-        html += '</div>';
-        
-        html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
-        html += '<div id="stories-container"></div>'; 
-    } else if (type === 'waterfall') {
-        html += '<div style="' + toolbarStyle + '">';
-        html += '<button type="button" class="btn" title="Agregar un nuevo Requerimiento Funcional" onclick="addNarrativeForm()" style="' + btnStyle + '">➕</button>';
-        html += '<button type="button" class="btn btn-accent" title="Validar requerimientos contra el estándar SRS" onclick="validateAllNarratives()" style="' + btnStyle + '">🔍</button>';
-        html += '<div style="width: 2px; height: 30px; background: #ccc; margin: 0 5px;"></div>'; // Separador visual
-        html += '<button type="button" class="btn" title="Exportar Script Windows y Documento Word" style="background: #28a745; color: white; ' + btnStyle + '" onclick="exportProjectFoldersAndFiles()">📁</button>';
-        html += '<button type="button" class="btn" title="Guardar una copia de respaldo del proyecto (JSON)" style="background: #17a2b8; color: white; ' + btnStyle + '" onclick="exportNarrativeProjectJSON()">📤</button>';
-        html += '<label class="btn" title="Cargar un proyecto previamente guardado (JSON)" style="background: #ffc107; color: #212529; cursor: pointer; margin: 0; font-weight: bold; ' + btnStyle + '">📥<input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
-        html += '</div>';
-        
-        html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
-        html += '<div id="narratives-container"></div>'; 
+    // Solo activamos el menú flotante si NO estamos en modo manual
+    if (!isManualMode) {
+        enableTextSelectionBinding();
     }
+}
+
+function initAgileWorkspace() {
+    var wContainer = document.getElementById('workspace-container');
+    var html = '<div id="atdd-lab">';
     
-    html += '<div id="atdd-output" class="card" style="display:none; margin-top:15px;"></div>';
-    html += '<div id="nar-output" class="card" style="display:none; margin-top:15px;"></div>';
-    html += '</div></div>';
-
-    html += '<div id="floating-menu" style="display: none; position: absolute; background: #333; color: white; padding: 5px; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; gap: 5px;"></div>';
-
-    workspace.innerHTML = html;
-    workspace.style.display = 'block';
-
-    var step2 = document.querySelector('#tab-req-engineering .card > div:nth-child(2)');
-    if(step2) step2.style.display = 'none';
-    var step1 = document.querySelector('#tab-req-engineering .card > div:nth-child(1)');
-    if(step1) step1.style.display = 'none';
-
+    var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
+    
+    html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">';
+    html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
+    html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
+    
+    html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
+    
+    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportToExcelCSV()">📊 Excel / Jira (CSV)</button>';
+    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportAtddProjectJSON()">📤 Guardar respaldo (Json)</button>';
+    html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar un proyecto <input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
+    html += '</div>';
+    
+    html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
+    html += '<div id="stories-container"></div>'; 
+    html += '</div>';
+    
+    wContainer.innerHTML = html;
+    
     setTimeout(function() {
-        if (type === 'agile' && typeof addStoryForm === 'function') addStoryForm();
-        if (type === 'waterfall' && typeof addNarrativeForm === 'function') addNarrativeForm();
-    }, 100);
-
-    setupTextSelectionObserver();
-    trackLastActiveForm();
-}
-
-function trackLastActiveForm() {
-    var builder = document.getElementById('form-builder');
-    if (!builder) return;
-    builder.addEventListener('focusin', function(e) {
-        var card = e.target.closest('.card');
-        if (card) {
-            var match = card.id.match(/\d+$/);
-            if (match) lastInteractedFormIndex = parseInt(match[0], 10);
+        if (typeof addStoryForm === 'function' && document.getElementById('stories-container').children.length === 0) {
+            addStoryForm();
         }
-    });
+    }, 100);
 }
 
-function setupTextSelectionObserver() {
-    var docContent = document.getElementById('document-content');
-    var floatMenu = document.getElementById('floating-menu');
+function initWaterfallWorkspace() {
+    var wContainer = document.getElementById('workspace-container');
+    var html = '<div id="narrative-lab">';
     
-    if (!docContent || !floatMenu) return;
+    var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
 
-    docContent.addEventListener('mouseup', function(e) {
+    html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">';
+    html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
+    html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
+    
+    html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
+    
+    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportProjectFoldersAndFiles()">📁 Exportar Script/Docx</button>';
+    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportNarrativeProjectJSON()">📤 Guardar respaldo (Json)</button>';
+    html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar un proyecto <input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
+    html += '</div>';
+
+    html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
+    
+    html += '<div id="nar-output" style="display:none; margin-bottom:20px; border:1px solid #ccc; padding:15px; border-radius:6px; background:#f9f9f9; max-height:300px; overflow-y:auto;"></div>';
+    html += '<div id="narratives-container"></div>';
+    html += '</div>';
+    
+    wContainer.innerHTML = html;
+    
+    setTimeout(function() {
+        if (typeof addNarrativeForm === 'function' && document.getElementById('narratives-container').children.length === 0) {
+            addNarrativeForm();
+        }
+    }, 100);
+}
+
+function enableTextSelectionBinding() {
+    var docPanel = document.getElementById('doc-content');
+    if (!docPanel) return;
+
+    var floatMenu = document.getElementById('floating-menu');
+    if (!floatMenu) {
+        floatMenu = document.createElement('div');
+        floatMenu.id = 'floating-menu';
+        floatMenu.style.position = 'absolute';
+        floatMenu.style.display = 'none';
+        floatMenu.style.background = '#333';
+        floatMenu.style.border = '1px solid #222';
+        floatMenu.style.borderRadius = '6px';
+        floatMenu.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        floatMenu.style.zIndex = '9999';
+        floatMenu.style.flexDirection = 'column';
+        floatMenu.style.minWidth = '180px';
+        floatMenu.style.overflow = 'hidden';
+        document.body.appendChild(floatMenu);
+    }
+
+    docPanel.addEventListener('mouseup', function(e) {
         var selection = window.getSelection();
         var selectedText = selection.toString().trim();
-
-        var anchorNode = selection.anchorNode;
-        if (anchorNode && anchorNode.parentElement) {
-            var parentTag = anchorNode.parentElement.tagName.toLowerCase();
-            if (['h1', 'h2', 'h3', 'h4'].includes(parentTag)) {
-                floatMenu.style.display = 'none';
-                return;
+        
+        var isHeader = false;
+        var parent = selection.anchorNode ? selection.anchorNode.parentElement : null;
+        if (parent) {
+            var tag = parent.tagName.toLowerCase();
+            if (['h1','h2','h3','h4','h5','h6'].includes(tag)) {
+                isHeader = true;
             }
         }
 
-        if (selectedText.length > 0) {
-            var rect = selection.getRangeAt(0).getBoundingClientRect();
-            var top = rect.bottom + window.scrollY + 5;
-            var left = rect.left + window.scrollX;
-
-            floatMenu.style.top = top + 'px';
-            floatMenu.style.left = left + 'px';
+        if (selectedText.length > 2 && !isHeader) {
+            var range = selection.getRangeAt(0);
+            var rect = range.getBoundingClientRect();
             
-            var menuHtml = '<div style="font-size:0.75rem; color:#aaa; padding:2px 5px; border-bottom:1px solid #555;">Enviar a Fila #' + lastInteractedFormIndex + '</div>';
+            floatMenu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+            floatMenu.style.left = (rect.left + window.scrollX) + 'px';
+            
+            var menuHtml = '<div style="font-size:0.75rem; color:#aaa; padding:5px 8px; border-bottom:1px solid #555; background:#222; text-align:center;">Enviar a Fila #' + lastInteractedFormIndex + '</div>';
             
             if (activeMethodology === 'agile') {
-                menuHtml += '<button onclick="sendTextToField(\'st-epic\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Épica</button>';
-                menuHtml += '<button onclick="sendTextToField(\'st-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de la Historia</button>';
-                menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa (INVEST)</button>';
-                menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios de Aceptación (BDD)</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-epic\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Épica</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Nombre Historia</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Narrativa</button>';
+                menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Criterios BDD</button>';
             } else {
-                menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Nombre de Requerimiento</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Narrativa Formal</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Entradas/Reglas/Salidas</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:5px;">➡️ Criterios QA (Verificación)</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-prio\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:#777; cursor:pointer; text-align:left; padding:5px; font-size: 0.8rem;">➡️ Prioridad (1, 2, 3)</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-prio\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Prioridad (1,2,3)</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Nombre Requerimiento</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Narrativa Formal</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Entradas/Reglas/Salidas</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Criterios QA</button>';
             }
             
             floatMenu.innerHTML = menuHtml;
@@ -287,15 +294,28 @@ function setupTextSelectionObserver() {
     });
 
     document.addEventListener('mousedown', function(e) {
-        if (floatMenu.style.display === 'flex' && !floatMenu.contains(e.target) && !docContent.contains(e.target)) {
+        if (floatMenu && !floatMenu.contains(e.target) && e.target.id !== 'doc-content') {
             floatMenu.style.display = 'none';
-            window.getSelection().removeAllRanges();
         }
     });
-}
 
-function escapeQuotes(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, "\\n");
+    document.getElementById('workspace-container').addEventListener('click', function(e) {
+        var card = e.target.closest('.card');
+        if (card) {
+            var idParts = card.id.split('-');
+            var idx = idParts[idParts.length - 1];
+            if (!isNaN(idx)) {
+                lastInteractedFormIndex = idx;
+                
+                document.querySelectorAll('.card').forEach(c => c.style.borderLeftColor = '#ccc');
+                if (activeMethodology === 'agile') {
+                    card.style.borderLeftColor = '#28a745';
+                } else {
+                    card.style.borderLeftColor = '#005691';
+                }
+            }
+        }
+    });
 }
 
 function sendTextToField(fieldPrefix, text) {
@@ -305,13 +325,20 @@ function sendTextToField(fieldPrefix, text) {
     if (inputEl) {
         if (inputEl.tagName.toLowerCase() === 'select') {
             var options = inputEl.options;
-            var searchTxt = text.toString().toLowerCase().trim();
+            var found = false;
+            var searchTxt = text.toLowerCase().trim();
+            
             for (var i = 0; i < options.length; i++) {
-                if (options[i].value.toLowerCase() === searchTxt || options[i].text.toLowerCase().includes(searchTxt)) {
+                var optVal = options[i].value.toLowerCase();
+                var optText = options[i].text.toLowerCase();
+                
+                if (optText.includes(searchTxt) || optVal.includes(searchTxt) || searchTxt.includes(optVal.split(' - ')[0])) {
                     inputEl.selectedIndex = i;
+                    found = true;
                     break;
                 }
             }
+            if (!found) alert("⚠️ El texto seleccionado ('" + text + "') no coincide con ninguna clave o descripción del catálogo.");
         } else {
             inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
         }
@@ -322,9 +349,14 @@ function sendTextToField(fieldPrefix, text) {
         setTimeout(() => inputEl.style.backgroundColor = originalBg || '', 800);
         
     } else {
-        alert("⚠️ No se encontró el campo destino.");
+        alert("⚠️ No se encontró el campo destino (Fila #" + lastInteractedFormIndex + ").");
     }
     
-    document.getElementById('floating-menu').style.display = 'none';
+    var floatMenu = document.getElementById('floating-menu');
+    if (floatMenu) floatMenu.style.display = 'none';
     window.getSelection().removeAllRanges();
+}
+
+function escapeQuotes(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
 }
