@@ -90,97 +90,31 @@ function enableMethodologySelection() {
 function selectMethodology(type) {
     var isManualMode = false;
     
-    // REGLA 1: Avanzar sin archivo base
-    if (!extractedDocumentText) {
-        var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
+    // Validar si hay documento cargado
+    var docText = typeof extractedDocumentText !== 'undefined' ? extractedDocumentText : "";
+    if (!docText || docText.trim() === "") {
+        var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar al área de trabajo para capturar desde cero o importar un JSON?");
         if (!proceed) return;
-        
-        extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
         isManualMode = true; 
     }
 
-    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
-    var containerATDD = document.getElementById('stories-container');
-    var containerSRS = document.getElementById('narratives-container');
-    var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
-    var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
-
-    if (hasUnsavedATDD || hasUnsavedSRS) {
-        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar o recién importados).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar un lienzo en blanco, haz clic en 'Cancelar'.");
-        
-        if (!keepCache) {
-            if (containerATDD) containerATDD.innerHTML = '';
-            if (containerSRS) containerSRS.innerHTML = '';
-            if (typeof storyCount !== 'undefined') storyCount = 0;
-            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
-        }
-    } else {
-        if (containerATDD) containerATDD.innerHTML = '';
-        if (containerSRS) containerSRS.innerHTML = '';
-        if (typeof storyCount !== 'undefined') storyCount = 0;
-        if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+    if (typeof activeMethodology !== 'undefined') {
+        activeMethodology = type;
     }
 
-    activeMethodology = type;
-
-    // --- TRANSICIÓN DE PANTALLA ---
-    var welcomeMod = document.getElementById('tab-welcome');
-    
-    // ¡AQUÍ ESTÁ EL CAMBIO EXACTO!
-    var targetMod = document.getElementById('tab-req-engineering');
-    
-    if (welcomeMod) welcomeMod.classList.remove('active');
-    if (targetMod) targetMod.classList.add('active');
-
-    // Ocultar los pasos de carga de archivo
+    // 1. Ocultar los pasos de carga (Paso 1 y 2)
     var setupContainer = document.getElementById('setup-container');
     if (setupContainer) setupContainer.style.display = 'none';
 
-    // Controlar la visibilidad de los paneles (Izquierdo y Derecho)
-    var leftPanel = document.getElementById('left-panel');
-    var rightPanel = document.getElementById('right-panel');
+    // 2. Mostrar el espacio de trabajo dinámico
+    var unifiedWorkspace = document.getElementById('unified-workspace');
+    if (unifiedWorkspace) unifiedWorkspace.style.display = 'block';
 
-    if (isManualMode) {
-        if (leftPanel) leftPanel.style.display = 'none';
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '1';
-            rightPanel.style.width = '100%';
-        }
-    } else {
-        if (leftPanel) {
-            leftPanel.style.display = 'block';
-            leftPanel.style.flex = '1'; 
-            leftPanel.style.maxWidth = '40%';
-        }
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '2';
-        }
-    }
-
-    var docContentPanel = document.getElementById('doc-content');
-    if (docContentPanel) {
-        docContentPanel.innerHTML = extractedDocumentText;
-    }
-
-    if (type === 'agile') {
+    // 3. Disparar la generación de la interfaz según la metodología elegida
+    if (type === 'agile' && typeof initAgileWorkspace === 'function') {
         initAgileWorkspace();
-    } else if (type === 'waterfall') {
+    } else if (type === 'waterfall' && typeof initWaterfallWorkspace === 'function') {
         initWaterfallWorkspace();
-    }
-
-    if (!isManualMode) {
-        enableTextSelectionBinding();
-    }
-
-    // Activar el botón de la barra de navegación superior
-    var btnMods = document.querySelectorAll('nav button');
-    for(var b=0; b < btnMods.length; b++) {
-        btnMods[b].classList.remove('active');
-        if(btnMods[b].innerText.includes("Ingeniería de Requerimientos") || btnMods[b].id === "btn-mod-req") {
-            btnMods[b].classList.add('active');
-        }
     }
 }
 
