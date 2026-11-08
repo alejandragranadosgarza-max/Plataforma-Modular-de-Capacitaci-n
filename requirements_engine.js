@@ -95,22 +95,38 @@ function enableMethodologySelection() {
 function selectMethodology(type) {
     var isManualMode = false;
     
-    // REGLA DE NEGOCIO: Avanzar sin archivo
+    // REGLA 1: Avanzar sin archivo base (Para importar JSON o crear desde cero)
     if (!extractedDocumentText) {
         var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
         if (!proceed) return;
+        
         extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
-        isManualMode = true; // Bandera para saber si usamos pantalla dividida o completa
+        isManualMode = true; 
+        
+        // ¡LA SOLUCIÓN! Forzamos a la interfaz a ocultar la bienvenida y mostrar el Módulo 2
+        var targetMod = document.getElementById('tab-lab');
+        var welcomeMod = document.getElementById('tab-welcome');
+        if (welcomeMod) welcomeMod.classList.remove('active');
+        if (targetMod) targetMod.classList.add('active');
+        
+        // Activamos visualmente el botón en la barra superior
+        var btnMods = document.querySelectorAll('nav button');
+        for(var b=0; b < btnMods.length; b++) {
+            btnMods[b].classList.remove('active');
+            if(btnMods[b].innerText.includes("Ingeniería de Requerimientos") || btnMods[b].id === "btn-mod-req") {
+                btnMods[b].classList.add('active');
+            }
+        }
     }
 
-    // PROTECCIÓN CONTRA PÉRDIDA DE DATOS
+    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos por recargas o internet)
     var containerATDD = document.getElementById('stories-container');
     var containerSRS = document.getElementById('narratives-container');
     var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
     var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
 
     if (hasUnsavedATDD || hasUnsavedSRS) {
-        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar en blanco, haz clic en 'Cancelar'.");
+        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar o recién importados).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar un lienzo en blanco, haz clic en 'Cancelar'.");
         
         if (!keepCache) {
             if (containerATDD) containerATDD.innerHTML = '';
@@ -132,6 +148,38 @@ function selectMethodology(type) {
     var setupContainer = document.getElementById('setup-container');
     
     if (setupContainer) setupContainer.style.display = 'none';
+
+    // DISEÑO INTELIGENTE: Si entró sin documento, el área de trabajo toma toda la pantalla
+    if (isManualMode) {
+        if (leftPanel) leftPanel.style.display = 'none';
+        if (rightPanel) {
+            rightPanel.style.display = 'block';
+            rightPanel.style.flex = '1';
+            rightPanel.style.width = '100%';
+        }
+    } else {
+        if (leftPanel) {
+            leftPanel.style.display = 'block';
+            leftPanel.style.flex = '1'; 
+            leftPanel.style.maxWidth = '40%';
+        }
+        if (rightPanel) {
+            rightPanel.style.display = 'block';
+            rightPanel.style.flex = '2';
+        }
+    }
+
+    document.getElementById('doc-content').innerHTML = extractedDocumentText;
+
+    if (type === 'agile') {
+        initAgileWorkspace();
+    } else if (type === 'waterfall') {
+        initWaterfallWorkspace();
+    }
+
+    if (!isManualMode) {
+        enableTextSelectionBinding();
+    }
 
     // NUEVA REGLA EXPLORATORIA: 
     // Si entró sin documento, ocultamos el panel izquierdo y el derecho ocupa el 100%
