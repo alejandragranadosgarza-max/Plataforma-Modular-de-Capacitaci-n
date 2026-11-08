@@ -12,29 +12,29 @@ var activeQuizType = 'testing'; // 'testing', 'ba', 'tech', 'scrum', 'ux'
 var answeredCurrent = false;
 
 // --- CAMBIO DE MÓDULO PRINCIPAL Y SUBMÓDULOS ---
+// CONTROL DE PESTAÑAS (MÓDULOS PRINCIPALES)
 function switchMainTab(tabId, btn) {
     var esAdmin = (sessionStorage.getItem("admin_auth") === "true" || localStorage.getItem("admin_auth") === "true");
+    
+    // Verificación de seguridad
     if ((tabId === 'tab-lab' || tabId === 'tab-narrative') && !esAdmin) {
-        alert("Acceso restringido. Debes iniciar sesión como administradora.");
+        alert("🔒 Acceso restringido. Debes iniciar sesión como administradora (Janos).");
         return;
     }
 
-    // Ocultar todos los módulos principales, incluyendo la pantalla de bienvenida
+    // Limpiar módulos y botones
     var mods = document.querySelectorAll('.container > .module');
-    for (var i = 0; i < mods.length; i++) {
-        mods[i].classList.remove('active');
-    }
+    for (var i = 0; i < mods.length; i++) mods[i].classList.remove('active');
     
-    // Quitar la clase active de todos los botones de la barra de navegación
     var btns = document.querySelectorAll('nav button');
-    for (var j = 0; j < btns.length; j++) {
-        btns[j].classList.remove('active');
-    }
+    for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
     
-    // Mostrar el módulo solicitado y activar su botón
+    // Activar destino
     var targetMod = document.getElementById(tabId);
     if (targetMod) targetMod.classList.add('active');
     if (btn) btn.classList.add('active');
+
+    // Nota: Se eliminó el "window.scrollTo()" para evitar que la pantalla baje forzosamente al cambiar de módulo.
 }
 
 function switchCapSubModule(subId) {
