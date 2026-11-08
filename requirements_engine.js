@@ -143,11 +143,47 @@ function selectMethodology(type) {
 
     activeMethodology = type;
 
+    // --- EL CAMBIO CLAVE ESTÁ AQUÍ ---
+    // Aseguramos capturar el setupContainer y Ocultarlo
     var leftPanel = document.getElementById('left-panel');
     var rightPanel = document.getElementById('right-panel');
     var setupContainer = document.getElementById('setup-container');
     
+    // Si existe el contenedor de pasos, ¡Ocúltalo!
     if (setupContainer) setupContainer.style.display = 'none';
+
+    // DISEÑO INTELIGENTE: Si entró sin documento, el área de trabajo toma toda la pantalla
+    if (isManualMode) {
+        if (leftPanel) leftPanel.style.display = 'none';
+        if (rightPanel) {
+            rightPanel.style.display = 'block';
+            rightPanel.style.flex = '1';
+            rightPanel.style.width = '100%';
+        }
+    } else {
+        if (leftPanel) {
+            leftPanel.style.display = 'block';
+            leftPanel.style.flex = '1'; 
+            leftPanel.style.maxWidth = '40%';
+        }
+        if (rightPanel) {
+            rightPanel.style.display = 'block';
+            rightPanel.style.flex = '2';
+        }
+    }
+
+    document.getElementById('doc-content').innerHTML = extractedDocumentText;
+
+    // Disparamos la generación del lienzo
+    if (type === 'agile') {
+        initAgileWorkspace();
+    } else if (type === 'waterfall') {
+        initWaterfallWorkspace();
+    }
+
+    if (!isManualMode) {
+        enableTextSelectionBinding();
+    }
 
     // DISEÑO INTELIGENTE: Si entró sin documento, el área de trabajo toma toda la pantalla
     if (isManualMode) {
