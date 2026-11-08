@@ -185,7 +185,6 @@ function selectMethodology(type) {
         }
     }
 }
-
 function initAgileWorkspace() {
     var wContainer = document.getElementById('workspace-container');
     if (!wContainer) return;
