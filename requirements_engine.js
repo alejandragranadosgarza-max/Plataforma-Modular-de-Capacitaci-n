@@ -104,7 +104,6 @@ function selectMethodology(type) {
     }
 
     // --- TRANSICIÓN DE PANTALLA ---
-    // Forzamos a la interfaz a ocultar la bienvenida y mostrar el Módulo 2
     var targetMod = document.getElementById('tab-req-engineering'); 
     var welcomeMod = document.getElementById('tab-welcome');
     if (welcomeMod) welcomeMod.classList.remove('active');
@@ -128,12 +127,11 @@ function selectMethodology(type) {
 
 // 4. GENERADORES DE LABORATORIOS
 function initAgileWorkspace() {
-    var wContainer = document.getElementById('workspace-container');
+    var wContainer = document.getElementById('unified-workspace');
     if (!wContainer) return;
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     var html = '<div id="atdd-lab">';
-    // Margen top 60px inyectado para evitar el menú morado
     html += '<div style="margin-top: 60px; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center;">';
     html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
@@ -154,12 +152,11 @@ function initAgileWorkspace() {
 }
 
 function initWaterfallWorkspace() {
-    var wContainer = document.getElementById('workspace-container');
+    var wContainer = document.getElementById('unified-workspace');
     if (!wContainer) return;
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     var html = '<div id="narrative-lab">';
-    // Margen top 60px inyectado para evitar el menú morado
     html += '<div style="margin-top: 60px; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center;">';
     html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
@@ -240,7 +237,7 @@ function enableTextSelectionBinding() {
         }
     });
 
-    document.getElementById('workspace-container').addEventListener('click', function(e) {
+    document.getElementById('unified-workspace').addEventListener('click', function(e) {
         var card = e.target.closest('.card');
         if (card) {
             var idParts = card.id.split('-');
