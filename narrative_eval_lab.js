@@ -5,7 +5,6 @@
 
 var narrativeCount = 0;
 
-// 1. Carga inicial (Si el contenedor ya existe al cargar la página)
 window.addEventListener('DOMContentLoaded', function() {
     var container = document.getElementById('narratives-container');
     if (container && container.children.length === 0) {
@@ -13,7 +12,6 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 2. Carga dinámica (Detecta cuando abres el módulo Cascada y genera el formulario automáticamente)
 var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
         if (mutation.addedNodes) {
@@ -36,13 +34,23 @@ function addNarrativeForm(prefillData) {
     if (!container) return;
     
     var cardId = 'nar-card-' + narrativeCount;
-    var reqIdText = (prefillData && prefillData.reqId) ? prefillData.reqId : ('REQ-' + (narrativeCount < 10 ? '0' + narrativeCount : narrativeCount));
-    var reqName = (prefillData && prefillData.reqName) ? prefillData.reqName : "";
+    var reqIdText = (prefillData && (prefillData.reqId || prefillData.id)) ? (prefillData.reqId || prefillData.id) : ('REQ-' + (narrativeCount < 10 ? '0' + narrativeCount : narrativeCount));
+    var reqName = (prefillData && (prefillData.reqName || prefillData.name)) ? (prefillData.reqName || prefillData.name) : "";
     var reqPrio = (prefillData && prefillData.priority) ? prefillData.priority : "";
-    var descVal = (prefillData && prefillData.narrative) ? prefillData.narrative : "";
-    var ioVal = (prefillData && prefillData.io) ? prefillData.io : "";
-    var acVal = (prefillData && prefillData.criteria) ? prefillData.criteria : "";
-    var selectedObjs = (prefillData && prefillData.objectives) ? prefillData.objectives : []; 
+    var descVal = (prefillData && (prefillData.narrative || prefillData.desc)) ? (prefillData.narrative || prefillData.desc) : "";
+    var ioVal = (prefillData && (prefillData.io || prefillData.inputs)) ? (prefillData.io || prefillData.inputs) : "";
+    var acVal = (prefillData && (prefillData.criteria || prefillData.ac)) ? (prefillData.criteria || prefillData.ac) : "";
+    
+    // Adaptador inteligente: Convierte string antiguo a formato Array 1:N
+    var selectedObjs = [];
+    if (prefillData) {
+        if (Array.isArray(prefillData.objectives)) {
+            selectedObjs = prefillData.objectives;
+        } else if (prefillData.objective) {
+            var cleanObj = prefillData.objective.split('-')[0].trim();
+            if (cleanObj) selectedObjs.push(cleanObj);
+        }
+    }
     
     var html = '<div class="card narrative-item-card" id="' + cardId + '" style="margin-bottom:20px; border-left: 4px solid #005691; padding: 20px;">';
     html += '<div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">';
@@ -53,11 +61,6 @@ function addNarrativeForm(prefillData) {
     html += '<div style="display:flex; gap:15px; margin-bottom:15px; flex-wrap:wrap;">';
     html += '<div style="flex:1; min-width:100px;"><label style="font-weight:bold;">Núm. Req (ID):</label><input type="text" id="nar-reqid-' + narrativeCount + '" value="' + escapeHtmlAttr(reqIdText) + '" readonly style="background:#f1f3f5; width:100%;"></div>';
     html += '<div style="flex:3; min-width:200px;"><label style="font-weight:bold;">Nombre de Requerimiento:</label><input type="text" id="nar-name-' + narrativeCount + '" value="' + escapeHtmlAttr(reqName) + '" placeholder="Propuesta de título editable..." style="width:100%;"></div>';
-    
-    var sel1 = reqPrio === "1" ? "selected" : "";
-    var sel2 = reqPrio === "2" ? "selected" : "";
-    var sel3 = reqPrio === "3" ? "selected" : "";
-    html += '<div style="display:none;"><select id="nar-prio-' + narrativeCount + '"><option value="">-- Nivel --</option><option value="1" ' + sel1 + '>Alta (1)</option><option value="2" ' + sel2 + '>Media (2)</option><option value="3" ' + sel3 + '>Baja (3)</option></select></div>';
     html += '</div>';
 
     html += '<div style="margin-bottom:15px;">';
@@ -213,7 +216,6 @@ function collectAllNarratives() {
         
         var reqIdEl = document.getElementById('nar-reqid-' + idSuffix);
         var nameEl = document.getElementById('nar-name-' + idSuffix);
-        var prioEl = document.getElementById('nar-prio-' + idSuffix);
         var descEl = document.getElementById('nar-desc-' + idSuffix);
         var ioEl = document.getElementById('nar-io-' + idSuffix);
         var acEl = document.getElementById('nar-ac-' + idSuffix);
@@ -227,7 +229,6 @@ function collectAllNarratives() {
         list.push({
             index: idSuffix, 
             objectives: selectedObjs,
-            priority: prioEl ? prioEl.value : "",
             reqId: reqIdEl ? reqIdEl.value.trim() : "",
             reqName: nameEl ? nameEl.value.trim() : "",
             narrative: descEl ? descEl.value.trim() : "",
@@ -307,7 +308,6 @@ function scrollToNarrative(cardId) {
 function escapeHtmlAttr(str) { return str ? String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
 function escapeHtmlText(str) { return str ? String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
 
-// --- EXPORTAR SCRIPT WINDOWS Y DOCUMENTO WORD / JSON ---
 function exportProjectFoldersAndFiles() {
     var project = (document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "") || "Proyecto_SRS";
     var safeProj = project.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -342,7 +342,6 @@ function exportProjectFoldersAndFiles() {
     link.click();
     document.body.removeChild(link);
 
-    // Retraso para evitar que el navegador bloquee la segunda descarga
     setTimeout(function() {
         var scriptContent = "@echo off\n";
         scriptContent += "echo Generando Estructura de Directorios SRS para " + project + "...\n";
@@ -392,9 +391,45 @@ function importNarrativeProjectJSON(event) {
             if (data.project && document.getElementById('nar-project')) {
                 document.getElementById('nar-project').value = data.project;
             }
-            if (Array.isArray(data.objectivesCatalog)) {
-                window.loadedBusinessObjectives = data.objectivesCatalog;
+            
+            var reqs = [];
+            if (Array.isArray(data)) {
+                reqs = data;
+            } else if (data.requirements && Array.isArray(data.requirements)) {
+                reqs = data.requirements;
+            } else if (data.narratives && Array.isArray(data.narratives)) {
+                reqs = data.narratives;
+            } else if (data.items && Array.isArray(data.items)) {
+                reqs = data.items;
             }
+
+            // RECONSTRUCCIÓN DINÁMICA DEL CATÁLOGO (Evita el cuadro vacío de la captura)
+            if (Array.isArray(data.objectivesCatalog) && data.objectivesCatalog.length > 0) {
+                window.loadedBusinessObjectives = data.objectivesCatalog;
+            } else {
+                var rebuiltCatalog = [];
+                var seenObjs = {};
+                for(var r = 0; r < reqs.length; r++) {
+                    var objs = [];
+                    if (Array.isArray(reqs[r].objectives)) {
+                        objs = reqs[r].objectives;
+                    } else if (reqs[r].objective) {
+                        objs.push(reqs[r].objective.split('-')[0].trim());
+                    }
+                    
+                    for(var o = 0; o < objs.length; o++) {
+                        var objId = objs[o];
+                        if(objId && !seenObjs[objId]) {
+                            seenObjs[objId] = true;
+                            rebuiltCatalog.push({ id: objId, desc: "Objetivo recuperado del respaldo" });
+                        }
+                    }
+                }
+                if(rebuiltCatalog.length > 0) {
+                    window.loadedBusinessObjectives = rebuiltCatalog;
+                }
+            }
+
             var container = document.getElementById('narratives-container');
             if (container) container.innerHTML = '';
             
@@ -402,7 +437,6 @@ function importNarrativeProjectJSON(event) {
                 narrativeCount = 0;
             }
 
-            var reqs = data.requirements || [];
             for (var i = reqs.length - 1; i >= 0; i--) { 
                 addNarrativeForm(reqs[i]);
             }
@@ -419,6 +453,5 @@ function importNarrativeProjectJSON(event) {
     reader.readAsText(file, "UTF-8");
 }
 
-// ALIAS: Estas líneas aseguran que los botones HTML funcionen sin importar si invocan el nombre viejo o el nuevo.
 window.exportProjectJSON = exportNarrativeProjectJSON;
 window.importProjectJSON = importNarrativeProjectJSON;
