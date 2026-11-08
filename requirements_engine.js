@@ -1,367 +1,486 @@
 // ==========================================
-// MÓDULO UNIFICADO: INGENIERÍA DE REQUERIMIENTOS
-// Archivo: requirements_engine.js
+// MÓDULO 3: EVALUACIÓN Y GESTIÓN DE NARRATIVAS (CASCADA / SRS)
+// Archivo: narrative_eval_lab.js
 // ==========================================
 
-var extractedDocumentText = "";
-var activeMethodology = "";
-var lastInteractedFormIndex = 1;
-
-window.loadedBusinessObjectives = [];
+var narrativeCount = 0;
 
 window.addEventListener('DOMContentLoaded', function() {
-    var reqModuleBtn = document.getElementById('btn-mod-req');
-    if (reqModuleBtn) {
-        reqModuleBtn.addEventListener('click', function(e) {
-            if (window.innerWidth < 1024) {
-                e.preventDefault();
-                alert("🖥️ El Laboratorio de Ingeniería de Requerimientos requiere un espacio de trabajo amplio. Por favor, accede desde un equipo de escritorio.");
-                switchMainTab('tab-training', document.querySelector('nav button'));
-            }
-        });
+    var container = document.getElementById('narratives-container');
+    if (container && container.children.length === 0) {
+        addNarrativeForm();
     }
 });
 
-function handleContextUpload(event) {
+var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.addedNodes) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.id === 'narratives-container' || (node.nodeType === 1 && node.querySelector('#narratives-container'))) {
+                    var container = document.getElementById('narratives-container');
+                    if (container && container.children.length === 0) {
+                        addNarrativeForm();
+                    }
+                }
+            });
+        }
+    });
+});
+observer.observe(document.body, { childList: true, subtree: true });
+
+function addNarrativeForm(prefillData) {
+    narrativeCount++;
+    var container = document.getElementById('narratives-container');
+    if (!container) return;
+    
+    // Aquí es clave: El cardId debe coincidir exactamente con el que busca el scroll
+    var cardId = 'nar-card-' + narrativeCount;
+    var reqIdText = (prefillData && (prefillData.reqId || prefillData.id)) ? (prefillData.reqId || prefillData.id) : ('REQ-' + (narrativeCount < 10 ? '0' + narrativeCount : narrativeCount));
+    var reqName = (prefillData && (prefillData.reqName || prefillData.name)) ? (prefillData.reqName || prefillData.name) : "";
+    var reqPrio = (prefillData && prefillData.priority) ? prefillData.priority : "";
+    var descVal = (prefillData && (prefillData.narrative || prefillData.desc)) ? (prefillData.narrative || prefillData.desc) : "";
+    var ioVal = (prefillData && (prefillData.io || prefillData.inputs)) ? (prefillData.io || prefillData.inputs) : "";
+    var acVal = (prefillData && (prefillData.criteria || prefillData.ac)) ? (prefillData.criteria || prefillData.ac) : "";
+    
+    var selectedObjs = [];
+    if (prefillData) {
+        if (Array.isArray(prefillData.objectives)) {
+            selectedObjs = prefillData.objectives;
+        } else if (prefillData.objective) {
+            var cleanObj = prefillData.objective.split('-')[0].trim();
+            if (cleanObj) selectedObjs.push(cleanObj);
+        }
+    }
+    
+    var html = '<div class="card narrative-item-card" id="' + cardId + '" style="margin-bottom:20px; border-left: 4px solid #005691; padding: 20px;">';
+    html += '<div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">';
+    html += '<h4 style="color:#005691; margin:0;">📋 Requerimiento Funcional #' + narrativeCount + '</h4>';
+    html += '<button type="button" class="btn-outline" style="color:#dc3545; border-color:#dc3545; padding:2px 8px;" onclick="document.getElementById(\'' + cardId + '\').remove()">🗑️ Eliminar</button>';
+    html += '</div>';
+    
+    html += '<div style="display:flex; gap:15px; margin-bottom:15px; flex-wrap:wrap;">';
+    html += '<div style="flex:1; min-width:100px;"><label style="font-weight:bold;">Núm. Req (ID):</label><input type="text" id="nar-reqid-' + narrativeCount + '" value="' + escapeHtmlAttr(reqIdText) + '" readonly style="background:#f1f3f5; width:100%;"></div>';
+    html += '<div style="flex:3; min-width:200px;"><label style="font-weight:bold;">Nombre de Requerimiento:</label><input type="text" id="nar-name-' + narrativeCount + '" value="' + escapeHtmlAttr(reqName) + '" placeholder="Propuesta de título editable..." style="width:100%;"></div>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:15px;">';
+    html += '<label style="font-weight:bold; color:#5b21b6;">🎯 Objetivos Comerciales (Trazabilidad Múltiple):</label>';
+    html += '<div id="nar-obj-container-' + narrativeCount + '" style="max-height:120px; overflow-y:auto; border:1px solid #ced4da; padding:12px; border-radius:6px; background:#fafafa;">';
+    
+    var activeCatalog = (typeof window.loadedBusinessObjectives !== 'undefined') ? window.loadedBusinessObjectives : [];
+    
+    if (activeCatalog.length > 0) {
+        for(var i = 0; i < activeCatalog.length; i++) {
+            var obj = activeCatalog[i];
+            var objId = obj.id || obj.clave;
+            var objDesc = obj.description || obj.desc || "";
+            var isChecked = selectedObjs.includes(objId) ? "checked" : "";
+            html += '<label style="display:block; margin-bottom:6px; font-weight:normal; cursor:pointer;"><input type="checkbox" class="nar-obj-chk-' + narrativeCount + '" value="' + escapeHtmlAttr(objId) + '" ' + isChecked + '> <b>' + escapeHtmlText(objId) + ':</b> ' + escapeHtmlText(objDesc) + '</label>';
+        }
+    } else {
+        html += '<small style="color:#6c757d;">⚠️ No hay objetivos detectados. Asegúrate de cargar el archivo base (.docx) en el Paso 1 para habilitar la trazabilidad.</small>';
+    }
+    html += '</div></div>';
+
+    html += '<div style="margin-bottom:15px;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:5px;">';
+    html += '<label style="font-weight:bold; margin:0;">Narrativa Formal (Descripción inicial):</label>';
+    html += '<button type="button" class="btn-outline" style="font-size:0.75rem; padding:3px 8px;" onclick="habilitarCambioAlcance(' + narrativeCount + ')">🔄 Registrar Cambio de Alcance</button>';
+    html += '</div>';
+    html += '<textarea id="nar-desc-' + narrativeCount + '" placeholder="El sistema debe permitir..." style="resize:vertical; min-height:80px; width:100%;" ondblclick="this.style.height=\'80px\'" title="Doble clic en la esquina para restaurar el tamaño">' + escapeHtmlText(descVal) + '</textarea>';
+    html += '</div>';
+
+    html += '<div id="nar-change-container-' + narrativeCount + '" style="display:none; margin-bottom:15px; padding:15px; background:#fff3cd; border:1px dashed #ffc107; border-radius:6px;">';
+    html += '<label style="font-weight:bold; color:#856404; display:block; margin-bottom:5px;">⚠️ Nuevo Alcance Solicitado (Scope Creep Tracker):</label>';
+    html += '<textarea id="nar-newdesc-' + narrativeCount + '" placeholder="Escribe la nueva definición. El sistema validará el impacto del cambio..." style="resize:vertical; min-height:80px; width:100%; border-color:#ffc107;" ondblclick="this.style.height=\'80px\'" onchange="validarScopeCreep(' + narrativeCount + ')"></textarea>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:15px;">';
+    html += '<label style="font-weight:bold;">Entradas, Reglas de Negocio y Salidas:</label>';
+    html += '<textarea id="nar-io-' + narrativeCount + '" style="resize:vertical; min-height:60px; width:100%;" ondblclick="this.style.height=\'60px\'">' + escapeHtmlText(ioVal) + '</textarea>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:10px;">';
+    html += '<label style="font-weight:bold;">Criterios QA (Verificación y Aceptación):</label>';
+    html += '<textarea id="nar-ac-' + narrativeCount + '" style="resize:vertical; min-height:60px; width:100%;" ondblclick="this.style.height=\'60px\'">' + escapeHtmlText(acVal) + '</textarea>';
+    html += '</div>';
+
+    html += '</div>'; 
+    
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    container.prepend(tempDiv.firstChild);
+}
+
+function habilitarCambioAlcance(id) {
+    var originalTextarea = document.getElementById('nar-desc-' + id);
+    if(!originalTextarea.value.trim()) {
+        alert("No hay una narrativa original redactada para someter a cambio.");
+        return;
+    }
+    originalTextarea.readOnly = true;
+    originalTextarea.style.background = '#e9ecef';
+    originalTextarea.style.color = '#6c757d';
+    
+    var changeContainer = document.getElementById('nar-change-container-' + id);
+    changeContainer.style.display = 'block';
+    document.getElementById('nar-newdesc-' + id).focus();
+}
+
+function validarScopeCreep(id) {
+    var original = document.getElementById('nar-desc-' + id).value.trim();
+    var nuevo = document.getElementById('nar-newdesc-' + id).value.trim();
+    
+    if(!nuevo) return;
+
+    var originalWords = original.split(/\s+/).length;
+    var nuevoWords = nuevo.split(/\s+/).length;
+    
+    if (nuevoWords > originalWords * 1.5 || nuevoWords < originalWords * 0.5) {
+        alert("¡Ah caray! Esto es un riesgo porque me pedías una bicicleta y ahora quieres un coche último modelo 🚲 ➡️ 🚗.\n\nEl volumen y la estructura del nuevo alcance difieren drásticamente de la línea base. Esto impacta severamente la planificación del Sprint/Proyecto.");
+    }
+}
+
+function normalizeTextForCompare(str) {
+    if (!str) return "";
+    return str.toLowerCase()
+        .replace(/[áäâà]/g, "a")
+        .replace(/[éëêè]/g, "e")
+        .replace(/[íïîì]/g, "i")
+        .replace(/[óöôò]/g, "o")
+        .replace(/[úüûù]/g, "u")
+        .replace(/[^a-z0-9ñ\s]/g, " ")
+        .replace(/\s+/g, " ").trim();
+}
+
+function calculateTextSimilarity(str1, str2) {
+    var n1 = normalizeTextForCompare(str1);
+    var n2 = normalizeTextForCompare(str2);
+    if (!n1 || !n2) return 0;
+    if (n1 === n2) return 1;
+
+    var words1 = n1.split(" ").filter(function(w) { return w.length > 2; });
+    var words2 = n2.split(" ").filter(function(w) { return w.length > 2; });
+    if (words1.length === 0 || words2.length === 0) return 0;
+
+    var set1 = {};
+    var set2 = {};
+    for (var i = 0; i < words1.length; i++) set1[words1[i]] = true;
+    for (var j = 0; j < words2.length; j++) set2[words2[j]] = true;
+
+    var intersection = 0;
+    var unionKeys = {};
+    for (var k1 in set1) {
+        unionKeys[k1] = true;
+        if (set2[k1]) intersection++;
+    }
+    for (var k2 in set2) { unionKeys[k2] = true; }
+
+    var unionCount = Object.keys(unionKeys).length;
+    return unionCount === 0 ? 0 : (intersection / unionCount);
+}
+
+function checkFieldCompleteness(text, fieldLabel) {
+    var problems = [];
+    var trimmed = (text || "").trim();
+
+    if (!trimmed) {
+        problems.push("El campo <b>" + fieldLabel + "</b> está vacío.");
+        return problems;
+    }
+
+    var words = trimmed.split(/\s+/).filter(function(w) { return w.length > 0; });
+    if (words.length < 3) {
+        problems.push("El campo <b>" + fieldLabel + "</b> es demasiado breve (contiene solo " + words.length + " palabras). ¿Está incompleto?");
+    }
+
+    if (/[,;:\-\/\\]$/.test(trimmed) || /\.\.\.$/.test(trimmed) || /…$/.test(trimmed)) {
+        problems.push("<b>Texto inconcluso en " + fieldLabel + ":</b> Termina en puntuación abierta.");
+    }
+
+    var placeholderRegex = /\b(tbd|pendiente|por definir|por confirmar|completar|falta|todo|to-do|xxx+|zzz+)\b|\?\?\?/i;
+    var matchPlaceholder = trimmed.match(placeholderRegex);
+    if (matchPlaceholder) {
+        problems.push("<b>Información pendiente en " + fieldLabel + ":</b> Contiene el marcador temporal <b>\"" + escapeHtmlText(matchPlaceholder[0]) + "\"</b>.");
+    }
+
+    return problems;
+}
+
+function collectAllNarratives() {
+    var cards = document.querySelectorAll('.narrative-item-card');
+    var list = [];
+    
+    for (var i = 0; i < cards.length; i++) {
+        var idSuffix = cards[i].id.split('-').pop(); 
+        
+        var reqIdEl = document.getElementById('nar-reqid-' + idSuffix);
+        var nameEl = document.getElementById('nar-name-' + idSuffix);
+        var descEl = document.getElementById('nar-desc-' + idSuffix);
+        var ioEl = document.getElementById('nar-io-' + idSuffix);
+        var acEl = document.getElementById('nar-ac-' + idSuffix);
+        
+        var objCheckboxes = document.querySelectorAll('.nar-obj-chk-' + idSuffix + ':checked');
+        var selectedObjs = [];
+        for (var c = 0; c < objCheckboxes.length; c++) {
+            selectedObjs.push(objCheckboxes[c].value);
+        }
+
+        list.push({
+            index: idSuffix, 
+            objectives: selectedObjs,
+            reqId: reqIdEl ? reqIdEl.value.trim() : "",
+            reqName: nameEl ? nameEl.value.trim() : "",
+            narrative: descEl ? descEl.value.trim() : "",
+            io: ioEl ? ioEl.value.trim() : "",
+            criteria: acEl ? acEl.value.trim() : ""
+        });
+    }
+    return list;
+}
+
+// Función global y robusta para hacer scroll a cualquier tarjeta (Módulo 3)
+window.scrollToNarrative = function(cardId) {
+    var card = document.getElementById(cardId);
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var originalBg = card.style.backgroundColor || '#fff';
+        card.style.transition = 'background-color 0.5s ease';
+        card.style.backgroundColor = '#fff3cd'; // Destello amarillo
+        setTimeout(function() { 
+            card.style.backgroundColor = originalBg; 
+        }, 1500);
+    } else {
+        console.warn("No se encontró la tarjeta con ID: " + cardId);
+    }
+};
+
+function validateAllNarratives() {
+    var outBox = document.getElementById('nar-output');
+    if (!outBox) return;
+    outBox.style.display = 'block';
+
+    var items = collectAllNarratives();
+
+    if (items.length === 0) {
+        outBox.innerHTML = '<p style="color:#dc3545; font-weight:bold;">⚠️ No hay requerimientos registrados. Haz clic en "➕ Agregar Requerimiento".</p>';
+        return;
+    }
+
+    var ambiguousWords = ["rápido", "rapido", "fácil", "facil", "intuitivo", "amigable", "etc", "etc.", "algunos", "varios", "normalmente", "adecuado", "óptimo", "optimo", "eficiente"];
+    var html = '<h3>📊 Dictamen de Calidad de Especificaciones (SRS / Cascada)</h3>';
+
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var issues = [];
+        var reqLabel = (it.reqId || ('Req #' + it.index)) + ' - ' + (it.reqName || 'Sin nombre');
+        
+        // El cardId exacto para que el onclick funcione
+        var cardId = 'nar-card-' + it.index; 
+
+        if (!it.objectives || it.objectives.length === 0) issues.push("Falta marcar al menos un <b>Objetivo Comercial</b> (Trazabilidad 1:N).");
+        if (!it.reqId || !it.reqName) issues.push("Falta el identificador (<b>Núm. Req</b>) o el <b>Nombre del Requerimiento</b>.");
+
+        var narrativeIssues = checkFieldCompleteness(it.narrative, "Narrativa");
+        var ioIssues = checkFieldCompleteness(it.io, "Datos de Entrada, Reglas y Salidas");
+        var criteriaIssues = checkFieldCompleteness(it.criteria, "Criterios QA");
+        issues = issues.concat(narrativeIssues, ioIssues, criteriaIssues);
+
+        var combinedText = (it.narrative + " " + it.io + " " + it.criteria).toLowerCase();
+        
+        // Validación estricta Anti-Paja (Fluff Words)
+        var fluffWords = ["básicamente", "en general", "como es sabido", "para fines prácticos", "es importante que"];
+        var foundFluff = [];
+        for (var f = 0; f < fluffWords.length; f++) {
+            var regexFluff = new RegExp("\\b" + fluffWords[f] + "\\b", "i");
+            if (regexFluff.test(combinedText)) {
+                foundFluff.push(fluffWords[f]);
+            }
+        }
+        if (foundFluff.length > 0) {
+            issues.push("<b>Información irrelevante detectada:</b> Elimina frases de relleno (<b>" + foundFluff.join(", ") + "</b>) que no aportan valor técnico a la especificación.");
+        }
+
+        // Validación estricta de Copy-Paste
+        var simNarIo = calculateTextSimilarity(it.narrative, it.io);
+        var simNarAc = calculateTextSimilarity(it.narrative, it.criteria);
+        
+        if (simNarIo >= 0.75 || simNarAc >= 0.75) {
+            issues.push("<b>Ideas repetitivas:</b> Estás reciclando la misma redacción en múltiples campos. Los Criterios de Aceptación deben ser reglas verificables, no un resumen de la Narrativa.");
+        }
+
+        var foundAmbiguous = ambiguousWords.filter(w => new RegExp("(?:^|\\s|[.,;:])" + w + "(?:$|\\s|[.,;:])", "i").test(combinedText));
+        if (foundAmbiguous.length > 0) issues.push("<b>Ambigüedad detectada:</b> Términos subjetivos (<b>" + foundAmbiguous.join(", ") + "</b>).");
+
+        if (issues.length === 0) {
+            html += '<div style="background:#d4edda; border-left:5px solid #28a745; padding:12px; margin-bottom:10px; border-radius:4px;"><b>✅ ' + escapeHtmlText(reqLabel) + ':</b> Cumple con el estándar SRS.</div>';
+        } else {
+            // AQUÍ ESTÁ LA MAGIA DEL CLIC (onclick apunta a window.scrollToNarrative)
+            html += '<div onclick="window.scrollToNarrative(\'' + cardId + '\')" title="Clic para ir a este requerimiento" style="margin-bottom: 8px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; cursor: pointer; border-left: 5px solid #dc3545; transition: transform 0.2s;" onmouseover="this.style.transform=\'scale(1.01)\'" onmouseout="this.style.transform=\'scale(1)\'">';
+            html += '<strong>❌ ' + escapeHtmlText(reqLabel) + ':</strong> Requiere ajustes (' + issues.length + ' hallazgos)';
+            html += '<ul style="margin: 4px 0 0 20px; padding: 0;">';
+            for (var m = 0; m < issues.length; m++) {
+                html += '<li style="margin-bottom:4px;">' + issues[m] + '</li>';
+            }
+            html += '</ul>';
+            html += '<small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz clic aquí para saltar al requerimiento.</small>';
+            html += '</div>';
+        }
+    }
+    outBox.innerHTML = html;
+}
+
+
+function escapeHtmlAttr(str) { return str ? String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+function escapeHtmlText(str) { return str ? String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+
+function exportProjectFoldersAndFiles() {
+    var project = (document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "") || "Proyecto_SRS";
+    var safeProj = project.replace(/[^a-zA-Z0-9_-]/g, "_");
+    var items = collectAllNarratives();
+
+    if (items.length === 0) {
+        alert("⚠️ Agrega al menos un requerimiento funcional antes de exportar.");
+        return;
+    }
+
+    var docContent = "====================================================\r\n";
+    docContent += "ESPECIFICACIÓN DE REQUERIMIENTOS DE SOFTWARE (SRS)\r\n";
+    docContent += "PROYECTO: " + project + "\r\n";
+    docContent += "====================================================\r\n\r\n";
+
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        docContent += "----------------------------------------------------\r\n";
+        docContent += "REQUERIMIENTO: " + (it.reqId || ("REQ-0" + it.index)) + " - " + (it.reqName || "Sin título") + "\r\n";
+        docContent += "OBJETIVOS VINCULADOS: " + (it.objectives && it.objectives.length > 0 ? it.objectives.join(", ") : "Ninguno") + "\r\n";
+        docContent += "----------------------------------------------------\r\n";
+        docContent += "1. NARRATIVA FORMAL:\r\n" + (it.narrative || "N/A") + "\r\n\r\n";
+        docContent += "2. ENTRADAS, REGLAS Y SALIDAS:\r\n" + (it.io || "N/A") + "\r\n\r\n";
+        docContent += "3. CRITERIOS DE VERIFICACIÓN QA:\r\n" + (it.criteria || "N/A") + "\r\n\r\n";
+    }
+
+    var blob = new Blob([docContent], { type: "application/msword;charset=utf-8" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "SRS_" + safeProj + ".doc";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(function() {
+        var scriptContent = "@echo off\n";
+        scriptContent += "echo Generando Estructura de Directorios SRS para " + project + "...\n";
+        scriptContent += "mkdir \"Documentacion_SRS\"\n";
+        scriptContent += "mkdir \"Evidencias_QA\"\n";
+        items.forEach(function(req) {
+            var cleanId = req.reqId.replace(/[^a-zA-Z0-9_-]/g, "_") || "REQ";
+            scriptContent += "mkdir \"Documentacion_SRS\\" + cleanId + "\"\n";
+        });
+        scriptContent += "echo Estructura creada con exito.\n";
+        scriptContent += "pause\n";
+
+        var scriptBlob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
+        var scriptLink = document.createElement('a');
+        scriptLink.href = window.URL.createObjectURL(scriptBlob);
+        scriptLink.download = "Estructura_Carpetas_SRS_" + safeProj + ".bat";
+        document.body.appendChild(scriptLink);
+        scriptLink.click();
+        scriptLink.remove();
+    }, 500); 
+}
+
+function exportNarrativeProjectJSON() {
+    var project = (document.getElementById('nar-project') ? document.getElementById('nar-project').value.trim() : "") || "Proyecto_SRS";
+    var data = {
+        project: project,
+        objectivesCatalog: (typeof window.loadedBusinessObjectives !== 'undefined') ? window.loadedBusinessObjectives : [],
+        requirements: collectAllNarratives()
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = project.replace(/[^a-zA-Z0-9_-]/g, "_") + "_SRS.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function importNarrativeProjectJSON(event) {
     var file = event.target.files[0];
     if (!file) return;
 
-    var fileName = file.name.toLowerCase();
-
-    if (fileName.endsWith('.docx')) {
-        if (typeof mammoth === 'undefined') {
-            alert("⚠️ La librería Mammoth.js no está disponible.");
-            return;
-        }
-        var reader = new FileReader();
-        reader.onload = function(loadEvent) {
-            var arrayBuffer = loadEvent.target.result;
-            mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
-                .then(function(result) {
-                    extractedDocumentText = result.value;
-                    parseBusinessObjectivesFromHTML(extractedDocumentText);
-                    alert("✅ Documento procesado. Elige la metodología para iniciar.");
-                    enableMethodologySelection();
-                })
-                .catch(function(err) {
-                    console.error(err);
-                    alert("⚠️ Error al leer el archivo Word.");
-                });
-        };
-        reader.readAsArrayBuffer(file);
-    } 
-    else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
-        var txtReader = new FileReader();
-        txtReader.onload = function(e) {
-            var rawText = e.target.result;
-            extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeQuotes(rawText) + "</pre>";
-            parseBusinessObjectivesFromHTML(extractedDocumentText);
-            alert("✅ Archivo de texto procesado. Elige la metodología para iniciar.");
-            enableMethodologySelection();
-        };
-        txtReader.readAsText(file);
-    } else {
-        alert("⚠️ Por favor, sube un archivo válido (.docx, .txt, .json, .csv).");
-    }
-}
-
-function parseBusinessObjectivesFromHTML(htmlContent) {
-    window.loadedBusinessObjectives = [];
-    var tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
-    
-    var rows = tempDiv.querySelectorAll('tr');
-    
-    for (var i = 1; i < rows.length; i++) {
-        var cols = rows[i].querySelectorAll('td');
-        if (cols.length >= 3) {
-            var id = cols[0].innerText.trim();
-            var desc = cols[2].innerText.trim();
-            
-            if (id.match(/^OBJ/i) || (id.length > 0 && id.length <= 15)) {
-                window.loadedBusinessObjectives.push({ id: id, description: desc });
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = JSON.parse(e.target.result);
+            if (data.project && document.getElementById('nar-project')) {
+                document.getElementById('nar-project').value = data.project;
             }
-        }
-    }
-}
-
-function enableMethodologySelection() {
-    var agilBtn = document.querySelector('button[onclick="selectMethodology(\'agile\')"]');
-    var srsBtn = document.querySelector('button[onclick="selectMethodology(\'waterfall\')"]');
-    if (agilBtn) agilBtn.disabled = false;
-    if (srsBtn) srsBtn.disabled = false;
-}
-
-function selectMethodology(type) {
-    var isManualMode = false;
-    
-    // REGLA 1: Avanzar sin archivo base
-    if (!extractedDocumentText) {
-        var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
-        if (!proceed) return;
-        
-        extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
-        isManualMode = true; 
-    }
-
-    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
-    var containerATDD = document.getElementById('stories-container');
-    var containerSRS = document.getElementById('narratives-container');
-    var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
-    var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
-
-    if (hasUnsavedATDD || hasUnsavedSRS) {
-        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar o recién importados).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar un lienzo en blanco, haz clic en 'Cancelar'.");
-        
-        if (!keepCache) {
-            if (containerATDD) containerATDD.innerHTML = '';
-            if (containerSRS) containerSRS.innerHTML = '';
-            if (typeof storyCount !== 'undefined') storyCount = 0;
-            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
-        }
-    } else {
-        if (containerATDD) containerATDD.innerHTML = '';
-        if (containerSRS) containerSRS.innerHTML = '';
-        if (typeof storyCount !== 'undefined') storyCount = 0;
-        if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
-    }
-
-    activeMethodology = type;
-
-    // --- TRANSICIÓN DE PANTALLA ---
-    // 1. Ocultar los pasos de carga de archivo
-    var setupContainer = document.getElementById('setup-container');
-    if (setupContainer) setupContainer.style.display = 'none';
-
-    // 2. Controlar la visibilidad de los paneles (Izquierdo y Derecho)
-    var leftPanel = document.getElementById('left-panel');
-    var rightPanel = document.getElementById('right-panel');
-
-    if (isManualMode) {
-        if (leftPanel) leftPanel.style.display = 'none';
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '1';
-            rightPanel.style.width = '100%';
-        }
-    } else {
-        if (leftPanel) {
-            leftPanel.style.display = 'block';
-            leftPanel.style.flex = '1'; 
-            leftPanel.style.maxWidth = '40%';
-        }
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '2';
-        }
-    }
-
-    // 3. Pintar el contenido del documento en el panel izquierdo (si existe)
-    var docContentPanel = document.getElementById('doc-content');
-    if (docContentPanel) {
-        docContentPanel.innerHTML = extractedDocumentText;
-    }
-
-    // 4. Disparamos la generación del lienzo
-    if (type === 'agile') {
-        initAgileWorkspace();
-    } else if (type === 'waterfall') {
-        initWaterfallWorkspace();
-    }
-
-    // 5. Activamos el menú flotante si no es modo manual
-    if (!isManualMode) {
-        enableTextSelectionBinding();
-    }
-}
-
-function initAgileWorkspace() {
-    var wContainer = document.getElementById('workspace-container');
-    if (!wContainer) return;
-    
-    var html = '<div id="atdd-lab">';
-    var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
-    
-    html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">';
-    html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
-    html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
-    html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
-    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportToExcelCSV()">📊 Excel / Jira (CSV)</button>';
-    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportAtddProjectJSON()">📤 Guardar respaldo (Json)</button>';
-    html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar un proyecto <input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
-    html += '</div>';
-    
-    html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
-    html += '<div id="stories-container"></div>'; 
-    html += '</div>';
-    
-    wContainer.innerHTML = html;
-    
-    setTimeout(function() {
-        if (typeof addStoryForm === 'function' && document.getElementById('stories-container').children.length === 0) {
-            addStoryForm();
-        }
-    }, 100);
-}
-
-function initWaterfallWorkspace() {
-    var wContainer = document.getElementById('workspace-container');
-    if (!wContainer) return;
-    
-    var html = '<div id="narrative-lab">';
-    var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
-
-    html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">';
-    html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
-    html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
-    html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
-    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportProjectFoldersAndFiles()">📁 Exportar Script/Docx</button>';
-    html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportNarrativeProjectJSON()">📤 Guardar respaldo (Json)</button>';
-    html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar un proyecto <input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
-    html += '</div>';
-
-    html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
-    
-    html += '<div id="nar-output" style="display:none; margin-bottom:20px; border:1px solid #ccc; padding:15px; border-radius:6px; background:#f9f9f9; max-height:300px; overflow-y:auto;"></div>';
-    html += '<div id="narratives-container"></div>';
-    html += '</div>';
-    
-    wContainer.innerHTML = html;
-    
-    setTimeout(function() {
-        if (typeof addNarrativeForm === 'function' && document.getElementById('narratives-container').children.length === 0) {
-            addNarrativeForm();
-        }
-    }, 100);
-}
-
-function enableTextSelectionBinding() {
-    var docPanel = document.getElementById('doc-content');
-    if (!docPanel) return;
-
-    var floatMenu = document.getElementById('floating-menu');
-    if (!floatMenu) {
-        floatMenu = document.createElement('div');
-        floatMenu.id = 'floating-menu';
-        floatMenu.style.position = 'absolute';
-        floatMenu.style.display = 'none';
-        floatMenu.style.background = '#333';
-        floatMenu.style.border = '1px solid #222';
-        floatMenu.style.borderRadius = '6px';
-        floatMenu.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-        floatMenu.style.zIndex = '9999';
-        floatMenu.style.flexDirection = 'column';
-        floatMenu.style.minWidth = '180px';
-        floatMenu.style.overflow = 'hidden';
-        document.body.appendChild(floatMenu);
-    }
-
-    docPanel.addEventListener('mouseup', function(e) {
-        var selection = window.getSelection();
-        var selectedText = selection.toString().trim();
-        
-        var isHeader = false;
-        var parent = selection.anchorNode ? selection.anchorNode.parentElement : null;
-        if (parent) {
-            var tag = parent.tagName.toLowerCase();
-            if (['h1','h2','h3','h4','h5','h6'].includes(tag)) {
-                isHeader = true;
+            
+            var reqs = [];
+            if (Array.isArray(data)) {
+                reqs = data;
+            } else if (data.requirements && Array.isArray(data.requirements)) {
+                reqs = data.requirements;
+            } else if (data.narratives && Array.isArray(data.narratives)) {
+                reqs = data.narratives;
+            } else if (data.items && Array.isArray(data.items)) {
+                reqs = data.items;
             }
-        }
 
-        if (selectedText.length > 2 && !isHeader) {
-            var range = selection.getRangeAt(0);
-            var rect = range.getBoundingClientRect();
+            window.loadedBusinessObjectives = []; 
             
-            floatMenu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
-            floatMenu.style.left = (rect.left + window.scrollX) + 'px';
-            
-            var menuHtml = '<div style="font-size:0.75rem; color:#aaa; padding:5px 8px; border-bottom:1px solid #555; background:#222; text-align:center;">Enviar a Fila #' + lastInteractedFormIndex + '</div>';
-            
-            if (activeMethodology === 'agile') {
-                menuHtml += '<button onclick="sendTextToField(\'st-epic\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Épica</button>';
-                menuHtml += '<button onclick="sendTextToField(\'st-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Nombre Historia</button>';
-                menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Narrativa</button>';
-                menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Criterios BDD</button>';
+            if (Array.isArray(data.objectivesCatalog) && data.objectivesCatalog.length > 0) {
+                window.loadedBusinessObjectives = data.objectivesCatalog;
             } else {
-                menuHtml += '<button onclick="sendTextToField(\'nar-prio\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Prioridad (1,2,3)</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Nombre Requerimiento</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Narrativa Formal</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; border-bottom:1px solid #444; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Entradas/Reglas/Salidas</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="background:none; border:none; color:white; cursor:pointer; text-align:left; padding:8px; width:100%; transition:background 0.2s;" onmouseover="this.style.background=\'#444\'" onmouseout="this.style.background=\'none\'">➡️ Criterios QA</button>';
-            }
-            
-            floatMenu.innerHTML = menuHtml;
-            floatMenu.style.display = 'flex';
-        } else {
-            floatMenu.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('mousedown', function(e) {
-        if (floatMenu && !floatMenu.contains(e.target) && e.target.id !== 'doc-content') {
-            floatMenu.style.display = 'none';
-        }
-    });
-
-    document.getElementById('workspace-container').addEventListener('click', function(e) {
-        var card = e.target.closest('.card');
-        if (card) {
-            var idParts = card.id.split('-');
-            var idx = idParts[idParts.length - 1];
-            if (!isNaN(idx)) {
-                lastInteractedFormIndex = idx;
-                
-                document.querySelectorAll('.card').forEach(c => c.style.borderLeftColor = '#ccc');
-                if (activeMethodology === 'agile') {
-                    card.style.borderLeftColor = '#28a745';
-                } else {
-                    card.style.borderLeftColor = '#005691';
+                var rebuiltCatalog = [];
+                var seenObjs = {};
+                for(var r = 0; r < reqs.length; r++) {
+                    var objs = [];
+                    if (Array.isArray(reqs[r].objectives)) {
+                        objs = reqs[r].objectives;
+                    } else if (reqs[r].objective) {
+                        var cleanObj = reqs[r].objective.split('-')[0].trim();
+                        if (cleanObj) objs.push(cleanObj);
+                    }
+                    
+                    for(var o = 0; o < objs.length; o++) {
+                        var objId = objs[o];
+                        if(objId && !seenObjs[objId]) {
+                            seenObjs[objId] = true;
+                            rebuiltCatalog.push({ id: objId, desc: "Objetivo recuperado del respaldo" });
+                        }
+                    }
+                }
+                if(rebuiltCatalog.length > 0) {
+                    window.loadedBusinessObjectives = rebuiltCatalog;
                 }
             }
-        }
-    });
-}
 
-function sendTextToField(fieldPrefix, text) {
-    var targetId = fieldPrefix + '-' + lastInteractedFormIndex;
-    var inputEl = document.getElementById(targetId);
-    
-    if (inputEl) {
-        if (inputEl.tagName.toLowerCase() === 'select') {
-            var options = inputEl.options;
-            var found = false;
-            var searchTxt = text.toLowerCase().trim();
-            
-            for (var i = 0; i < options.length; i++) {
-                var optVal = options[i].value.toLowerCase();
-                var optText = options[i].text.toLowerCase();
-                
-                if (optText.includes(searchTxt) || optVal.includes(searchTxt) || searchTxt.includes(optVal.split(' - ')[0])) {
-                    inputEl.selectedIndex = i;
-                    found = true;
-                    break;
-                }
+            if (typeof businessObjectivesCatalog !== 'undefined') {
+                businessObjectivesCatalog = window.loadedBusinessObjectives;
             }
-            if (!found) alert("⚠️ El texto seleccionado ('" + text + "') no coincide con ninguna clave o descripción del catálogo.");
-        } else {
-            inputEl.value = inputEl.value ? inputEl.value + ' \n' + text : text;
-        }
-        
-        var originalBg = inputEl.style.backgroundColor;
-        inputEl.style.transition = 'background-color 0.3s';
-        inputEl.style.backgroundColor = '#d4edda';
-        setTimeout(() => inputEl.style.backgroundColor = originalBg || '', 800);
-        
-    } else {
-        alert("⚠️ No se encontró el campo destino (Fila #" + lastInteractedFormIndex + ").");
-    }
-    
-    var floatMenu = document.getElementById('floating-menu');
-    if (floatMenu) floatMenu.style.display = 'none';
-    window.getSelection().removeAllRanges();
-}
 
-function escapeQuotes(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+            var container = document.getElementById('narratives-container');
+            if (container) container.innerHTML = '';
+            
+            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+            if (typeof narrativeCounter !== 'undefined') narrativeCounter = 0;
+
+            for (var i = reqs.length - 1; i >= 0; i--) { 
+                addNarrativeForm(reqs[i]);
+            }
+            if (reqs.length === 0) {
+                addNarrativeForm();
+            }
+            
+            alert("✅ Proyecto SRS importado correctamente (" + reqs.length + " requerimientos).");
+        } catch (err) {
+            console.error(err);
+            alert("⚠️ El archivo JSON seleccionado no tiene un formato válido para SRS.");
+        }
+        event.target.value = ""; 
+    };
+    reader.readAsText(file, "UTF-8");
 }
