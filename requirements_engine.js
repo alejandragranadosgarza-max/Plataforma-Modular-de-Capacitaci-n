@@ -95,31 +95,16 @@ function enableMethodologySelection() {
 function selectMethodology(type) {
     var isManualMode = false;
     
-    // REGLA 1: Avanzar sin archivo base (Para importar JSON o crear desde cero)
+    // REGLA 1: Avanzar sin archivo base
     if (!extractedDocumentText) {
         var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
         if (!proceed) return;
         
         extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
         isManualMode = true; 
-        
-        // ¡LA SOLUCIÓN! Forzamos a la interfaz a ocultar la bienvenida y mostrar el Módulo 2
-        var targetMod = document.getElementById('tab-lab');
-        var welcomeMod = document.getElementById('tab-welcome');
-        if (welcomeMod) welcomeMod.classList.remove('active');
-        if (targetMod) targetMod.classList.add('active');
-        
-        // Activamos visualmente el botón en la barra superior
-        var btnMods = document.querySelectorAll('nav button');
-        for(var b=0; b < btnMods.length; b++) {
-            btnMods[b].classList.remove('active');
-            if(btnMods[b].innerText.includes("Ingeniería de Requerimientos") || btnMods[b].id === "btn-mod-req") {
-                btnMods[b].classList.add('active');
-            }
-        }
     }
 
-    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos por recargas o internet)
+    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
     var containerATDD = document.getElementById('stories-container');
     var containerSRS = document.getElementById('narratives-container');
     var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
@@ -143,16 +128,15 @@ function selectMethodology(type) {
 
     activeMethodology = type;
 
-    // --- EL CAMBIO CLAVE ESTÁ AQUÍ ---
-    // Aseguramos capturar el setupContainer y Ocultarlo
-    var leftPanel = document.getElementById('left-panel');
-    var rightPanel = document.getElementById('right-panel');
+    // --- TRANSICIÓN DE PANTALLA ---
+    // 1. Ocultar los pasos de carga de archivo
     var setupContainer = document.getElementById('setup-container');
-    
-    // Si existe el contenedor de pasos, ¡Ocúltalo!
     if (setupContainer) setupContainer.style.display = 'none';
 
-    // DISEÑO INTELIGENTE: Si entró sin documento, el área de trabajo toma toda la pantalla
+    // 2. Controlar la visibilidad de los paneles (Izquierdo y Derecho)
+    var leftPanel = document.getElementById('left-panel');
+    var rightPanel = document.getElementById('right-panel');
+
     if (isManualMode) {
         if (leftPanel) leftPanel.style.display = 'none';
         if (rightPanel) {
@@ -172,81 +156,20 @@ function selectMethodology(type) {
         }
     }
 
-    document.getElementById('doc-content').innerHTML = extractedDocumentText;
+    // 3. Pintar el contenido del documento en el panel izquierdo (si existe)
+    var docContentPanel = document.getElementById('doc-content');
+    if (docContentPanel) {
+        docContentPanel.innerHTML = extractedDocumentText;
+    }
 
-    // Disparamos la generación del lienzo
+    // 4. Disparamos la generación del lienzo
     if (type === 'agile') {
         initAgileWorkspace();
     } else if (type === 'waterfall') {
         initWaterfallWorkspace();
     }
 
-    if (!isManualMode) {
-        enableTextSelectionBinding();
-    }
-
-    // DISEÑO INTELIGENTE: Si entró sin documento, el área de trabajo toma toda la pantalla
-    if (isManualMode) {
-        if (leftPanel) leftPanel.style.display = 'none';
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '1';
-            rightPanel.style.width = '100%';
-        }
-    } else {
-        if (leftPanel) {
-            leftPanel.style.display = 'block';
-            leftPanel.style.flex = '1'; 
-            leftPanel.style.maxWidth = '40%';
-        }
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '2';
-        }
-    }
-
-    document.getElementById('doc-content').innerHTML = extractedDocumentText;
-
-    if (type === 'agile') {
-        initAgileWorkspace();
-    } else if (type === 'waterfall') {
-        initWaterfallWorkspace();
-    }
-
-    if (!isManualMode) {
-        enableTextSelectionBinding();
-    }
-
-    // NUEVA REGLA EXPLORATORIA: 
-    // Si entró sin documento, ocultamos el panel izquierdo y el derecho ocupa el 100%
-    if (isManualMode) {
-        if (leftPanel) leftPanel.style.display = 'none';
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '1';
-            rightPanel.style.width = '100%';
-        }
-    } else {
-        if (leftPanel) {
-            leftPanel.style.display = 'block';
-            leftPanel.style.flex = '1'; 
-            leftPanel.style.maxWidth = '40%';
-        }
-        if (rightPanel) {
-            rightPanel.style.display = 'block';
-            rightPanel.style.flex = '2';
-        }
-    }
-
-    document.getElementById('doc-content').innerHTML = extractedDocumentText;
-
-    if (type === 'agile') {
-        initAgileWorkspace();
-    } else if (type === 'waterfall') {
-        initWaterfallWorkspace();
-    }
-
-    // Solo activamos el menú flotante si NO estamos en modo manual
+    // 5. Activamos el menú flotante si no es modo manual
     if (!isManualMode) {
         enableTextSelectionBinding();
     }
@@ -254,16 +177,15 @@ function selectMethodology(type) {
 
 function initAgileWorkspace() {
     var wContainer = document.getElementById('workspace-container');
-    var html = '<div id="atdd-lab">';
+    if (!wContainer) return;
     
+    var html = '<div id="atdd-lab">';
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     
     html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">';
     html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
-    
     html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
-    
     html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportToExcelCSV()">📊 Excel / Jira (CSV)</button>';
     html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportAtddProjectJSON()">📤 Guardar respaldo (Json)</button>';
     html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar un proyecto <input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
@@ -284,16 +206,15 @@ function initAgileWorkspace() {
 
 function initWaterfallWorkspace() {
     var wContainer = document.getElementById('workspace-container');
-    var html = '<div id="narrative-lab">';
+    if (!wContainer) return;
     
+    var html = '<div id="narrative-lab">';
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; transition:all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
 
     html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">';
     html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
-    
     html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
-    
     html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportProjectFoldersAndFiles()">📁 Exportar Script/Docx</button>';
     html += '<button type="button" style="' + btnStyle + '" onmouseover="this.style.background=\'#e2e8f0\'" onmouseout="this.style.background=\'#f8f9fa\'" onclick="exportNarrativeProjectJSON()">📤 Guardar respaldo (Json)</button>';
     html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar un proyecto <input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
