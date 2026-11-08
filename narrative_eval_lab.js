@@ -392,6 +392,7 @@ function importNarrativeProjectJSON(event) {
                 document.getElementById('nar-project').value = data.project;
             }
             
+            // 1. Extraer los requerimientos sin importar la versión del JSON
             var reqs = [];
             if (Array.isArray(data)) {
                 reqs = data;
@@ -403,10 +404,13 @@ function importNarrativeProjectJSON(event) {
                 reqs = data.items;
             }
 
-            // RECONSTRUCCIÓN DINÁMICA DEL CATÁLOGO (Evita el cuadro vacío de la captura)
+            // 2. BLINDAJE DEL CATÁLOGO: Reconstruir y asegurar la memoria global ANTES de dibujar
+            window.loadedBusinessObjectives = []; 
+            
             if (Array.isArray(data.objectivesCatalog) && data.objectivesCatalog.length > 0) {
                 window.loadedBusinessObjectives = data.objectivesCatalog;
             } else {
+                // Reconstrucción agresiva para JSON antiguos
                 var rebuiltCatalog = [];
                 var seenObjs = {};
                 for(var r = 0; r < reqs.length; r++) {
@@ -414,13 +418,15 @@ function importNarrativeProjectJSON(event) {
                     if (Array.isArray(reqs[r].objectives)) {
                         objs = reqs[r].objectives;
                     } else if (reqs[r].objective) {
-                        objs.push(reqs[r].objective.split('-')[0].trim());
+                        var cleanObj = reqs[r].objective.split('-')[0].trim();
+                        if (cleanObj) objs.push(cleanObj);
                     }
                     
                     for(var o = 0; o < objs.length; o++) {
                         var objId = objs[o];
                         if(objId && !seenObjs[objId]) {
                             seenObjs[objId] = true;
+                            // Rescatamos la clave e indicamos que viene del respaldo
                             rebuiltCatalog.push({ id: objId, desc: "Objetivo recuperado del respaldo" });
                         }
                     }
@@ -430,19 +436,26 @@ function importNarrativeProjectJSON(event) {
                 }
             }
 
+            // Sincronizar variables legacy por si acaso
+            if (typeof businessObjectivesCatalog !== 'undefined') {
+                businessObjectivesCatalog = window.loadedBusinessObjectives;
+            }
+
+            // 3. Limpiar el lienzo y reiniciar contadores
             var container = document.getElementById('narratives-container');
             if (container) container.innerHTML = '';
             
-            if (typeof narrativeCount !== 'undefined') {
-                narrativeCount = 0;
-            }
+            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+            if (typeof narrativeCounter !== 'undefined') narrativeCounter = 0;
 
+            // 4. Dibujar los formularios (ahora sí, con el catálogo cargado)
             for (var i = reqs.length - 1; i >= 0; i--) { 
                 addNarrativeForm(reqs[i]);
             }
             if (reqs.length === 0) {
                 addNarrativeForm();
             }
+            
             alert("✅ Proyecto SRS importado correctamente (" + reqs.length + " requerimientos).");
         } catch (err) {
             console.error(err);
@@ -452,6 +465,3 @@ function importNarrativeProjectJSON(event) {
     };
     reader.readAsText(file, "UTF-8");
 }
-
-window.exportProjectJSON = exportNarrativeProjectJSON;
-window.importProjectJSON = importNarrativeProjectJSON;
