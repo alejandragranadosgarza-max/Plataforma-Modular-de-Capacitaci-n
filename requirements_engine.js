@@ -90,22 +90,24 @@ function enableMethodologySelection() {
 function selectMethodology(type) {
     var isManualMode = false;
     
-    // Validar si hay documento cargado
-    if (!extractedDocumentText || extractedDocumentText.trim() === "") {
+    // REGLA 1: Avanzar sin archivo base
+    if (!extractedDocumentText) {
         var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar de todos modos al área de trabajo para importar un proyecto (JSON) o capturar desde cero?");
         if (!proceed) return;
+        
         extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
         isManualMode = true; 
     }
 
-    // Proteger caché del usuario
+    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
     var containerATDD = document.getElementById('stories-container');
     var containerSRS = document.getElementById('narratives-container');
     var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
     var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
 
     if (hasUnsavedATDD || hasUnsavedSRS) {
-        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo.\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar en blanco, haz clic en 'Cancelar'.");
+        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar o recién importados).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar un lienzo en blanco, haz clic en 'Cancelar'.");
+        
         if (!keepCache) {
             if (containerATDD) containerATDD.innerHTML = '';
             if (containerSRS) containerSRS.innerHTML = '';
@@ -121,16 +123,23 @@ function selectMethodology(type) {
 
     activeMethodology = type;
 
-    // Ejecutar transición visual
-    var setupContainer = document.getElementById('setup-container');
-    var leftPanel = document.getElementById('left-panel');
-    var rightPanel = document.getElementById('right-panel');
-    var docContentPanel = document.getElementById('doc-content');
+    // --- TRANSICIÓN DE PANTALLA ---
+    var welcomeMod = document.getElementById('tab-welcome');
+    
+    // ¡AQUÍ ESTÁ EL CAMBIO EXACTO!
+    var targetMod = document.getElementById('tab-req-engineering');
+    
+    if (welcomeMod) welcomeMod.classList.remove('active');
+    if (targetMod) targetMod.classList.add('active');
 
-    // Ocultar paso 1 y 2
+    // Ocultar los pasos de carga de archivo
+    var setupContainer = document.getElementById('setup-container');
     if (setupContainer) setupContainer.style.display = 'none';
 
-    // Ajustar paneles
+    // Controlar la visibilidad de los paneles (Izquierdo y Derecho)
+    var leftPanel = document.getElementById('left-panel');
+    var rightPanel = document.getElementById('right-panel');
+
     if (isManualMode) {
         if (leftPanel) leftPanel.style.display = 'none';
         if (rightPanel) {
@@ -150,11 +159,11 @@ function selectMethodology(type) {
         }
     }
 
+    var docContentPanel = document.getElementById('doc-content');
     if (docContentPanel) {
         docContentPanel.innerHTML = extractedDocumentText;
     }
 
-    // Iniciar laboratorio elegido
     if (type === 'agile') {
         initAgileWorkspace();
     } else if (type === 'waterfall') {
@@ -163,6 +172,15 @@ function selectMethodology(type) {
 
     if (!isManualMode) {
         enableTextSelectionBinding();
+    }
+
+    // Activar el botón de la barra de navegación superior
+    var btnMods = document.querySelectorAll('nav button');
+    for(var b=0; b < btnMods.length; b++) {
+        btnMods[b].classList.remove('active');
+        if(btnMods[b].innerText.includes("Ingeniería de Requerimientos") || btnMods[b].id === "btn-mod-req") {
+            btnMods[b].classList.add('active');
+        }
     }
 }
 
