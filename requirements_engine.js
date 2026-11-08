@@ -90,27 +90,35 @@ function enableMethodologySelection() {
 function selectMethodology(type) {
     var isManualMode = false;
     
-    // Validar si hay documento cargado
+    // REGLA 1: Validar si hay documento cargado y avanzar manual
     var docText = typeof extractedDocumentText !== 'undefined' ? extractedDocumentText : "";
     if (!docText || docText.trim() === "") {
         var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar al área de trabajo para capturar desde cero o importar un JSON?");
         if (!proceed) return;
         isManualMode = true; 
+        extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
     }
 
     if (typeof activeMethodology !== 'undefined') {
         activeMethodology = type;
     }
 
-    // 1. Ocultar los pasos de carga (Paso 1 y 2)
+    // --- TRANSICIÓN DE PANTALLA ---
+    // Forzamos a la interfaz a ocultar la bienvenida y mostrar el Módulo 2
+    var targetMod = document.getElementById('tab-req-engineering'); 
+    var welcomeMod = document.getElementById('tab-welcome');
+    if (welcomeMod) welcomeMod.classList.remove('active');
+    if (targetMod) targetMod.classList.add('active');
+
+    // Ocultar los pasos de carga (Paso 1 y 2)
     var setupContainer = document.getElementById('setup-container');
     if (setupContainer) setupContainer.style.display = 'none';
 
-    // 2. Mostrar el espacio de trabajo dinámico
+    // Mostrar el espacio de trabajo dinámico
     var unifiedWorkspace = document.getElementById('unified-workspace');
     if (unifiedWorkspace) unifiedWorkspace.style.display = 'block';
 
-    // 3. Disparar la generación de la interfaz según la metodología elegida
+    // Disparar la generación de la interfaz según la metodología elegida
     if (type === 'agile' && typeof initAgileWorkspace === 'function') {
         initAgileWorkspace();
     } else if (type === 'waterfall' && typeof initWaterfallWorkspace === 'function') {
@@ -125,7 +133,8 @@ function initAgileWorkspace() {
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     var html = '<div id="atdd-lab">';
-    html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center;">';
+    // Margen top 60px inyectado para evitar el menú morado
+    html += '<div style="margin-top: 60px; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center;">';
     html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
     html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
@@ -150,7 +159,8 @@ function initWaterfallWorkspace() {
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     var html = '<div id="narrative-lab">';
-    html += '<div style="margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center;">';
+    // Margen top 60px inyectado para evitar el menú morado
+    html += '<div style="margin-top: 60px; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center;">';
     html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
     html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
