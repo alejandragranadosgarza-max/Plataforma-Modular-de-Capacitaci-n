@@ -143,7 +143,8 @@ function validateAllNarratives() {
             totalErrors++;
             card.style.borderLeftColor = '#dc3545';
             card.style.background = '#fff5f5';
-            reportHtml += '<li style="margin-bottom:8px; cursor:pointer;" onclick="scrollToCard(\'' + card.id + '\')"><strong style="color:#dc3545;">' + reqId + ' (' + (name ? name : 'Sin título') + ') - RECHAZADO:</strong><ul style="color:#555; font-size:0.9rem;">';
+            // Inyectamos el evento onclick apuntando al cardId correcto
+            reportHtml += '<li style="margin-bottom:8px; cursor:pointer;" onclick="window.scrollToNarrative(\'' + card.id + '\')"><strong style="color:#dc3545;">' + reqId + ' (' + (name ? name : 'Sin título') + ') - RECHAZADO (Clic para ir):</strong><ul style="color:#555; font-size:0.9rem;">';
             for (var e = 0; e < errors.length; e++) {
                 reportHtml += '<li>' + errors[e] + '</li>';
             }
