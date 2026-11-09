@@ -385,3 +385,21 @@ function sendTextToField(fieldPrefix, text) {
 function escapeQuotes(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
 }
+
+// --- UX FUNCIONAL: SCROLL Y RESALTADO PARA CAJAS ROJAS ---
+window.scrollToNarrative = function(cardId) {
+    var card = document.getElementById(cardId);
+    if (card) {
+        // Hace scroll suave ubicando la tarjeta al centro de la pantalla
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Efecto visual: destello amarillo temporal para ubicarlo rápido
+        var originalBg = card.style.backgroundColor || '#fff';
+        card.style.transition = 'background-color 0.5s ease';
+        card.style.backgroundColor = '#fff3cd'; // Amarillo de advertencia
+        
+        setTimeout(() => {
+            card.style.backgroundColor = originalBg;
+        }, 1500);
+    }
+};
