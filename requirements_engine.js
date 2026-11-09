@@ -51,7 +51,7 @@ function handleContextUpload(event) {
     else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
         var txtReader = new FileReader();
         txtReader.onload = function(e) {
-            extractedDocumentText = "<pre style='white-space: pre-wrap;'>" + escapeQuotes(e.target.result) + "</pre>";
+            extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeQuotes(e.target.result) + "</pre>";
             parseBusinessObjectivesFromHTML(extractedDocumentText);
             alert("✅ Archivo de texto procesado. Elige la metodología para iniciar.");
             enableMethodologySelection();
@@ -90,7 +90,6 @@ function enableMethodologySelection() {
 function selectMethodology(type) {
     var isManualMode = false;
     
-    // REGLA 1: Validar si hay documento cargado y avanzar manual
     var docText = typeof extractedDocumentText !== 'undefined' ? extractedDocumentText : "";
     if (!docText || docText.trim() === "") {
         var proceed = confirm("⚠️ No has cargado un Documento de Contexto en el Paso 1.\n\n¿Deseas continuar al área de trabajo para capturar desde cero o importar un JSON?");
@@ -99,45 +98,34 @@ function selectMethodology(type) {
         extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
     }
 
-    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
     var containerATDD = document.getElementById('stories-container');
     var containerSRS = document.getElementById('narratives-container');
     var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
     var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
 
     if (hasUnsavedATDD || hasUnsavedSRS) {
-        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar en blanco, haz clic en 'Cancelar'.");
-        
+        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo.\n\n¿Quieres CONSERVARLOS en pantalla? (Aceptar).\nPara BORRARLOS y empezar en blanco (Cancelar).");
         if (!keepCache) {
             if (containerATDD) containerATDD.innerHTML = '';
             if (containerSRS) containerSRS.innerHTML = '';
             if (typeof storyCount !== 'undefined') storyCount = 0;
             if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
         }
-    } else {
-        if (containerATDD) containerATDD.innerHTML = '';
-        if (containerSRS) containerSRS.innerHTML = '';
-        if (typeof storyCount !== 'undefined') storyCount = 0;
-        if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
     }
 
     if (typeof activeMethodology !== 'undefined') {
         activeMethodology = type;
     }
 
-    // --- TRANSICIÓN DE PANTALLA Y PANELES ---
     var leftPanel = document.getElementById('left-panel');
     var rightPanel = document.getElementById('right-panel');
     var unifiedWorkspace = document.getElementById('unified-workspace');
 
-    // Mostramos el workspace correcto
     if (unifiedWorkspace) unifiedWorkspace.style.display = 'block'; 
 
-    // Ocultar los pasos de carga de archivo
     var setupContainer = document.getElementById('setup-container');
     if (setupContainer) setupContainer.style.display = 'none';
 
-    // Ajuste de paneles según si se cargó archivo o no
     if (isManualMode) {
         if (leftPanel) leftPanel.style.display = 'none';
         if (rightPanel) {
@@ -157,13 +145,26 @@ function selectMethodology(type) {
         }
     }
 
-    // Cargar el documento en el panel izquierdo (si existe)
+    // INYECCIÓN DE ESTILOS UX, BANNER INSTRUCTIVO Y DOCUMENTO
     var docContent = document.getElementById('doc-content');
     if (docContent) {
-        docContent.innerHTML = extractedDocumentText;
+        var styleHTML = '<style>' +
+            '#doc-content { font-size: 0.9rem; line-height: 1.5; color: #444; }' +
+            '#doc-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }' +
+            '#doc-content th, #doc-content td { border: 1px solid #ccc; padding: 6px; word-wrap: break-word; overflow-wrap: break-word; }' +
+            '#doc-content img { max-width: 100%; height: auto; }' +
+            '</style>';
+            
+        var bannerHTML = '<div style="background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.85rem; border: 1px solid #bae6fd; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+            '💡 <b>Instrucciones de Mapeo:</b><br>' +
+            '1. Selecciona cualquier fragmento de texto (sin incluir títulos grandes).<br>' +
+            '2. Aparecerá un menú flotante oscuro.<br>' +
+            '3. Haz clic en el botón deseado para enviar el texto automáticamente al formulario de la derecha.' +
+            '</div>';
+
+        docContent.innerHTML = styleHTML + bannerHTML + extractedDocumentText;
     }
 
-    // Disparar la generación de la interfaz según la metodología elegida
     if (type === 'agile' && typeof initAgileWorkspace === 'function') {
         initAgileWorkspace();
     } else if (type === 'waterfall' && typeof initWaterfallWorkspace === 'function') {
