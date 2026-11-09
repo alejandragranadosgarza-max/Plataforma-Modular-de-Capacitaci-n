@@ -68,6 +68,35 @@
                    <span id="testing-sel-counter" class="badge" style="background:#dc3545; display: inline-block; padding: 6px 10px; margin-top: 5px;">0 de 6 capítulos seleccionados</span>
                 </div>
                 
+                <div class="chapter-grid">
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-1" class="testing-chap-cb" value="1" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 1:</b> Fundamentos <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-1">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-2" class="testing-chap-cb" value="2" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 2:</b> SDLC y Pruebas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-2">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-3" class="testing-chap-cb" value="3" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 3:</b> Pruebas Estáticas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-3">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-4" class="testing-chap-cb" value="4" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 4:</b> Análisis y Diseño <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-4">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-5" class="testing-chap-cb" value="5" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 5:</b> Gestión <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-5">(...) </small></span>
+                    </label>
+                    <label class="chapter-card unchecked">
+                        <input type="checkbox" id="chap-6" class="testing-chap-cb" value="6" onchange="updateSelectionCounter('testing')"> 
+                        <span><b>Cap. 6:</b> Herramientas <br><small style="color: #6c757d; font-size: 0.75rem;" id="count-chap-6">(...) </small></span>
+                    </label>
+                </div>
+                
+                <!-- ELIMINADO EL CONTENEDOR DUPLICADO AQUÍ -->
+
                 <div id="testing-setup-error" style="color:#d92027; font-weight:bold; display:none; margin-bottom:10px;">
                     ⚠️ Debes seleccionar al menos un capítulo para iniciar.
                 </div>
@@ -266,23 +295,6 @@
             <h2>Laboratorio de Ingeniería de Requerimientos</h2>
             <p>Sube el archivo base de tu proyecto y elige el marco de trabajo adecuado para extraer y validar los requerimientos formales o historias de usuario:</p>
             
-            <!-- CONTENEDOR UNIFICADO DEL ÁREA DE TRABAJO -->
-         <div id="unified-workspace" style="display: none; width: 100%;">
-         <div style="display: flex; gap: 20px; align-items: flex-start; width: 100%;">
-             
-            <!-- PANEL IZQUIERDO: VISOR DE DOCUMENTO -->
-        <div id="left-panel" style="flex: 1; max-width: 40%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; font-family: Arial, sans-serif; display: none;">
-            <h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px; font-size: 1.1rem;">📄 Documento de Referencia</h3>
-            <div id="doc-content" style="position: relative;"></div>
-        </div>
-        
-        <!-- PANEL DERECHO: FORMULARIOS ATDD / SRS -->
-        <div id="right-panel" style="flex: 2; max-height: 80vh; overflow-y: auto; padding-right: 10px; display: none;">
-            <div id="workspace-container"></div>
-        </div>
-    </div>
-</div>
-
             <div id="setup-container" class="card" style="padding: 25px; margin-bottom: 20px;">
                 <!-- PASO 1: Archivo Base -->
                 <div style="margin-bottom: 25px; background: #f3f0ff; padding: 20px; border-radius: 6px; border: 1px dashed #7c3aed;">
@@ -312,13 +324,26 @@
                 </div>
             </div>
 
-            <!-- Aquí se inyectarán los contenedores de las herramientas en la Fase 2 -->
-            <div id="unified-workspace" style="display:none; margin-top: 20px;">
-                <!-- El espacio de trabajo dividido se generará dinámicamente -->
+            <!-- CONTENEDOR UNIFICADO DEL ÁREA DE TRABAJO (ÚNICO Y CORRECTO) -->
+            <div id="unified-workspace" style="display: none; width: 100%;">
+                <div style="display: flex; gap: 20px; align-items: flex-start; width: 100%;">
+                    
+                    <!-- PANEL IZQUIERDO: VISOR DE DOCUMENTO -->
+                    <div id="left-panel" style="flex: 1; max-width: 40%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; font-family: Arial, sans-serif; display: none;">
+                        <h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px; font-size: 1.1rem;">📄 Documento de Referencia</h3>
+                        <div id="doc-content" style="position: relative;"></div>
+                    </div>
+                    
+                    <!-- PANEL DERECHO: FORMULARIOS ATDD / SRS -->
+                    <div id="right-panel" style="flex: 2; max-height: 80vh; overflow-y: auto; padding-right: 10px; display: none;">
+                        <div id="workspace-container"></div>
+                    </div>
+                </div>
             </div>
 
         </div>
     </div>
+    
 <script src="questions_testing.js"></script>
 <script src="questions_ba.js"></script>
 <script src="questions_tech.js"></script>
