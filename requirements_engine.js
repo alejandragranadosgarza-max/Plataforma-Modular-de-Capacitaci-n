@@ -103,6 +103,31 @@ function selectMethodology(type) {
         activeMethodology = type;
     }
 
+    var leftPanel = document.getElementById('left-panel');
+var rightPanel = document.getElementById('right-panel');
+var unifiedWorkspace = document.getElementById('unified-workspace');
+
+if (unifiedWorkspace) unifiedWorkspace.style.display = 'block'; // O flex
+
+// Si no hay documento, el panel derecho toma todo el ancho
+if (isManualMode) {
+    if (leftPanel) leftPanel.style.display = 'none';
+    if (rightPanel) {
+        rightPanel.style.display = 'block';
+        rightPanel.style.flex = '1';
+        rightPanel.style.width = '100%';
+    }
+} else {
+    if (leftPanel) {
+        leftPanel.style.display = 'block';
+        leftPanel.style.flex = '1'; 
+        leftPanel.style.maxWidth = '40%';
+    }
+    if (rightPanel) {
+        rightPanel.style.display = 'block';
+        rightPanel.style.flex = '2';
+    }
+}
     // --- TRANSICIÓN DE PANTALLA ---
     var targetMod = document.getElementById('tab-req-engineering'); 
     var welcomeMod = document.getElementById('tab-welcome');
@@ -127,7 +152,7 @@ function selectMethodology(type) {
 
 // 4. GENERADORES DE LABORATORIOS
 function initAgileWorkspace() {
-    var wContainer = document.getElementById('unified-workspace');
+    var wContainer = document.getElementById('workspace-container');
     if (!wContainer) return;
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
@@ -152,7 +177,7 @@ function initAgileWorkspace() {
 }
 
 function initWaterfallWorkspace() {
-    var wContainer = document.getElementById('unified-workspace');
+    var wContainer = document.getElementById('workspace-container');
     if (!wContainer) return;
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
@@ -176,7 +201,6 @@ function initWaterfallWorkspace() {
         }
     }, 100);
 }
-
 // 5. MENÚ FLOTANTE
 function enableTextSelectionBinding() {
     var docPanel = document.getElementById('doc-content');
