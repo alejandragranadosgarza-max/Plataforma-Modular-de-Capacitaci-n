@@ -5,30 +5,29 @@
 
 var extractedDocumentText = "";
 var activeMethodology = "";
-var lastInteractedFormIndex = 1; 
-
-// EXPORTACIÓN DE OBJETIVOS GLOBALES PARA NARRATIVE_EVAL_LAB
+var lastInteractedFormIndex = 1;
 window.loadedBusinessObjectives = [];
 
+// 1. CONTROL DE ACCESO
 window.addEventListener('DOMContentLoaded', function() {
     var reqModuleBtn = document.getElementById('btn-mod-req');
     if (reqModuleBtn) {
         reqModuleBtn.addEventListener('click', function(e) {
             if (window.innerWidth < 1024) {
                 e.preventDefault();
-                alert("🖥️ El Laboratorio de Ingeniería de Requerimientos requiere un espacio de trabajo amplio. Por favor, accede desde un equipo de escritorio.");
-                switchMainTab('tab-training', document.querySelector('nav button'));
+                alert("🖥️ El Laboratorio requiere un espacio de trabajo amplio. Por favor, accede desde un equipo de escritorio.");
+                if(typeof switchMainTab === 'function') switchMainTab('tab-training', document.querySelector('nav button'));
             }
         });
     }
 });
 
+// 2. LECTURA DE ARCHIVOS (PASO 1)
 function handleContextUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
 
     var fileName = file.name.toLowerCase();
-    
     if (fileName.endsWith('.docx')) {
         if (typeof mammoth === 'undefined') {
             alert("⚠️ La librería Mammoth.js no está disponible.");
@@ -36,30 +35,30 @@ function handleContextUpload(event) {
         }
         var reader = new FileReader();
         reader.onload = function(loadEvent) {
-            var arrayBuffer = loadEvent.target.result;
-            mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+            mammoth.convertToHtml({ arrayBuffer: loadEvent.target.result })
                 .then(function(result) {
                     extractedDocumentText = result.value;
                     parseBusinessObjectivesFromHTML(extractedDocumentText);
                     alert("✅ Documento procesado. Elige la metodología para iniciar.");
                     enableMethodologySelection();
-                })
-                .catch(function(error) {
-                    alert("⚠️ No se pudo leer el archivo .docx.");
+                }).catch(function(err) {
+                    console.error(err);
+                    alert("⚠️ Error al leer el archivo Word.");
                 });
         };
         reader.readAsArrayBuffer(file);
-    } else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
-        var textReader = new FileReader();
-        textReader.onload = function(e) {
-            var rawText = e.target.result;
-            extractedDocumentText = "<p>" + rawText.replace(/\n/g, "<br>") + "</p>";
-            alert("✅ Documento de texto procesado. Elige la metodología.");
+    } 
+    else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
+        var txtReader = new FileReader();
+        txtReader.onload = function(e) {
+            extractedDocumentText = "<pre style='white-space: pre-wrap;'>" + escapeQuotes(e.target.result) + "</pre>";
+            parseBusinessObjectivesFromHTML(extractedDocumentText);
+            alert("✅ Archivo de texto procesado. Elige la metodología para iniciar.");
             enableMethodologySelection();
         };
-        textReader.readAsText(file, "UTF-8");
+        txtReader.readAsText(file);
     } else {
-        alert("⚠️ Formato no soportado. Usa .docx, .txt, .csv, o .json.");
+        alert("⚠️ Por favor, sube un archivo válido (.docx, .txt, .json, .csv).");
     }
 }
 
@@ -68,7 +67,6 @@ function parseBusinessObjectivesFromHTML(htmlContent) {
     var tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     var rows = tempDiv.querySelectorAll('tr');
-    
     for (var i = 1; i < rows.length; i++) {
         var cols = rows[i].querySelectorAll('td');
         if (cols.length >= 3) {
@@ -101,17 +99,45 @@ function selectMethodology(type) {
         extractedDocumentText = "<p><i>Modo de captura manual o importación (JSON) activo.</i></p>";
     }
 
+    // REGLA 2: Caché Inteligente (Protección contra pérdida de datos)
+    var containerATDD = document.getElementById('stories-container');
+    var containerSRS = document.getElementById('narratives-container');
+    var hasUnsavedATDD = containerATDD && containerATDD.children.length > 0;
+    var hasUnsavedSRS = containerSRS && containerSRS.children.length > 0;
+
+    if (hasUnsavedATDD || hasUnsavedSRS) {
+        var keepCache = confirm("Detectamos requerimientos previos en el área de trabajo (posiblemente sin exportar).\n\n¿Quieres CONSERVARLOS en pantalla? (Haz clic en 'Aceptar').\nPara BORRARLOS y empezar en blanco, haz clic en 'Cancelar'.");
+        
+        if (!keepCache) {
+            if (containerATDD) containerATDD.innerHTML = '';
+            if (containerSRS) containerSRS.innerHTML = '';
+            if (typeof storyCount !== 'undefined') storyCount = 0;
+            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+        }
+    } else {
+        if (containerATDD) containerATDD.innerHTML = '';
+        if (containerSRS) containerSRS.innerHTML = '';
+        if (typeof storyCount !== 'undefined') storyCount = 0;
+        if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+    }
+
     if (typeof activeMethodology !== 'undefined') {
         activeMethodology = type;
     }
 
+    // --- TRANSICIÓN DE PANTALLA Y PANELES ---
     var leftPanel = document.getElementById('left-panel');
     var rightPanel = document.getElementById('right-panel');
     var unifiedWorkspace = document.getElementById('unified-workspace');
 
-    if (unifiedWorkspace) unifiedWorkspace.style.display = 'block';
+    // Mostramos el workspace correcto
+    if (unifiedWorkspace) unifiedWorkspace.style.display = 'block'; 
 
-    // Si no hay documento, el panel derecho toma todo el ancho
+    // Ocultar los pasos de carga de archivo
+    var setupContainer = document.getElementById('setup-container');
+    if (setupContainer) setupContainer.style.display = 'none';
+
+    // Ajuste de paneles según si se cargó archivo o no
     if (isManualMode) {
         if (leftPanel) leftPanel.style.display = 'none';
         if (rightPanel) {
@@ -130,19 +156,12 @@ function selectMethodology(type) {
             rightPanel.style.flex = '2';
         }
     }
-    
-    // --- TRANSICIÓN DE PANTALLA ---
-    var targetMod = document.getElementById('tab-req-engineering'); 
-    var welcomeMod = document.getElementById('tab-welcome');
-    if (welcomeMod) welcomeMod.classList.remove('active');
-    if (targetMod) targetMod.classList.add('active');
 
-    // Ocultar los pasos de carga (Paso 1 y 2)
-    var setupContainer = document.getElementById('setup-container');
-    if (setupContainer) setupContainer.style.display = 'none';
-
-    // Mostrar el espacio de trabajo dinámico
-    if (unifiedWorkspace) unifiedWorkspace.style.display = 'block';
+    // Cargar el documento en el panel izquierdo (si existe)
+    var docContent = document.getElementById('doc-content');
+    if (docContent) {
+        docContent.innerHTML = extractedDocumentText;
+    }
 
     // Disparar la generación de la interfaz según la metodología elegida
     if (type === 'agile' && typeof initAgileWorkspace === 'function') {
@@ -150,11 +169,15 @@ function selectMethodology(type) {
     } else if (type === 'waterfall' && typeof initWaterfallWorkspace === 'function') {
         initWaterfallWorkspace();
     }
+
+    if (!isManualMode) {
+        enableTextSelectionBinding();
+    }
 }
 
 // 4. GENERADORES DE LABORATORIOS
 function initAgileWorkspace() {
-    var wContainer = document.getElementById('workspace-container'); // Apuntamos al contenedor correcto
+    var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
@@ -179,7 +202,7 @@ function initAgileWorkspace() {
 }
 
 function initWaterfallWorkspace() {
-    var wContainer = document.getElementById('workspace-container'); // Apuntamos al contenedor correcto
+    var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
