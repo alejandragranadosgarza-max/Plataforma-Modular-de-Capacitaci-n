@@ -244,7 +244,8 @@ function initAgileWorkspace() {
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     var html = '<div id="atdd-lab">';
-    html += '<div style="margin-top: 60px; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap;">';
+    // CORRECCIÓN: margin-top cambiado de 60px a 0 para alinear perfectamente con el panel izquierdo. Se agrega position sticky para que no se escondan al hacer scroll.
+    html += '<div style="margin-top: 0; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10;">';
     html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
     html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
@@ -269,7 +270,8 @@ function initWaterfallWorkspace() {
     
     var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
     var html = '<div id="narrative-lab">';
-    html += '<div style="margin-top: 60px; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap;">';
+    // CORRECCIÓN: margin-top cambiado de 60px a 0 para alinear perfectamente con el panel izquierdo. Se agrega position sticky para que no se escondan al hacer scroll.
+    html += '<div style="margin-top: 0; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10;">';
     html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
     html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
     html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
