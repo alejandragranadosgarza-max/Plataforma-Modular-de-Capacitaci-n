@@ -293,7 +293,22 @@
         <div style="max-width: 1000px; margin: 0 auto;">
             <h2>Laboratorio de Ingeniería de Requerimientos</h2>
             <p>Sube el archivo base de tu proyecto y elige el marco de trabajo adecuado para extraer y validar los requerimientos formales o historias de usuario:</p>
-            
+            <!-- CONTENEDOR UNIFICADO DEL ÁREA DE TRABAJO -->
+        <div id="unified-workspace" style="display: none; width: 100%;">
+         <div style="display: flex; gap: 20px; align-items: flex-start; width: 100%;">
+             <!-- PANEL IZQUIERDO: VISOR DE DOCUMENTO -->
+        <div id="left-panel" style="flex: 1; max-width: 40%; max-height: 80vh; overflow-y: auto; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 8px; font-family: Arial, sans-serif; display: none;">
+            <h3 style="margin-top: 0; color: #5b21b6; border-bottom: 2px solid #5b21b6; padding-bottom: 5px; font-size: 1.1rem;">📄 Documento de Referencia</h3>
+            <div id="doc-content" style="position: relative;"></div>
+        </div>
+        
+        <!-- PANEL DERECHO: FORMULARIOS ATDD / SRS -->
+        <div id="right-panel" style="flex: 2; max-height: 80vh; overflow-y: auto; padding-right: 10px; display: none;">
+            <div id="workspace-container"></div>
+        </div>
+    </div>
+</div>
+
             <div id="setup-container" class="card" style="padding: 25px; margin-bottom: 20px;">
                 <!-- PASO 1: Archivo Base -->
                 <div style="margin-bottom: 25px; background: #f3f0ff; padding: 20px; border-radius: 6px; border: 1px dashed #7c3aed;">
