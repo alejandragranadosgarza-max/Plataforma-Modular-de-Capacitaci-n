@@ -87,6 +87,7 @@ function enableMethodologySelection() {
 }
 
 // 3. TRANSICIÓN Y CACHÉ (PASO 2)
+// 3. TRANSICIÓN Y CACHÉ (PASO 2)
 function selectMethodology(type) {
     var isManualMode = false;
     
@@ -126,6 +127,7 @@ function selectMethodology(type) {
     var setupContainer = document.getElementById('setup-container');
     if (setupContainer) setupContainer.style.display = 'none';
 
+    // AJUSTE DE PROPORCIONES: 50% Izquierda / 50% Derecha para darle aire a las tablas del Word
     if (isManualMode) {
         if (leftPanel) leftPanel.style.display = 'none';
         if (rightPanel) {
@@ -137,13 +139,45 @@ function selectMethodology(type) {
         if (leftPanel) {
             leftPanel.style.display = 'block';
             leftPanel.style.flex = '1'; 
-            leftPanel.style.maxWidth = '40%';
+            leftPanel.style.maxWidth = '50%'; // Aumentado del 40% al 50%
         }
         if (rightPanel) {
             rightPanel.style.display = 'block';
-            rightPanel.style.flex = '2';
+            rightPanel.style.flex = '1'; // Equilibrado con el panel izquierdo
         }
     }
+
+    // INYECCIÓN DE ESTILOS UX Y BANNER FIJO
+    var docContent = document.getElementById('doc-content');
+    if (docContent) {
+        // Reducimos un poco el texto a 0.85rem y relajamos el control de las tablas
+        var styleHTML = '<style>' +
+            '#doc-content { font-size: 0.85rem; line-height: 1.6; color: #333; }' +
+            '#doc-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 20px; }' +
+            '#doc-content th, #doc-content td { border: 1px solid #ccc; padding: 8px; vertical-align: top; }' +
+            '#doc-content img { max-width: 100%; height: auto; }' +
+            '</style>';
+            
+        var bannerHTML = '<div style="background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bae6fd; position: sticky; top: 0; z-index: 10;">' +
+            '<strong style="display: block; margin-bottom: 5px;">💡 Instrucciones de Mapeo:</strong>' +
+            '1. Selecciona cualquier palabra o fragmento de texto clave.<br>' +
+            '2. Aparecerá un menú flotante oscuro.<br>' +
+            '3. Haz clic en el botón deseado para enviarlo al formulario.' +
+            '</div>';
+
+        docContent.innerHTML = styleHTML + bannerHTML + extractedDocumentText;
+    }
+
+    if (type === 'agile' && typeof initAgileWorkspace === 'function') {
+        initAgileWorkspace();
+    } else if (type === 'waterfall' && typeof initWaterfallWorkspace === 'function') {
+        initWaterfallWorkspace();
+    }
+
+    if (!isManualMode) {
+        enableTextSelectionBinding();
+    }
+
 
     // INYECCIÓN DE ESTILOS UX, BANNER INSTRUCTIVO Y DOCUMENTO
     var docContent = document.getElementById('doc-content');
