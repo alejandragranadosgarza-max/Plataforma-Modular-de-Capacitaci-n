@@ -200,3 +200,203 @@ function scrollToCard(cardId) {
         }, 1500);
     }
 }
+// =========================================================================
+// FUNCIONALIDAD DE BOTONES: EXPORTAR DOCX/SCRIPT, GUARDAR Y CARGAR JSON (SRS)
+// =========================================================================
+
+// Utilidad interna para recolectar todos los campos de cada tarjeta SRS
+function collectNarrativeCardsData() {
+    var container = document.getElementById('narratives-container');
+    if (!container) return [];
+    var cards = container.querySelectorAll('.card');
+    var data = [];
+
+    for (var i = 0; i < cards.length; i++) {
+        var card = cards[i];
+        var fields = {};
+        var inputs = card.querySelectorAll('input, textarea, select');
+
+        for (var j = 0; j < inputs.length; j++) {
+            var el = inputs[j];
+            if (!el.id) continue;
+            // Guardamos el prefijo sin el número de fila al final (ej. "nar-name-1" -> "nar-name")
+            var prefix = el.id.replace(/-\d+$/, '');
+            if (el.type === 'checkbox') {
+                if (!fields._checkboxes) fields._checkboxes = [];
+                if (el.checked) fields._checkboxes.push(el.value || el.id);
+            } else {
+                fields[prefix] = el.value;
+            }
+        }
+        data.push(fields);
+    }
+    return data;
+}
+
+// Utilidad interna para disparar descargas limpias
+function triggerFileDownload(content, filename, mimeType) {
+    var blob = new Blob([content], { type: mimeType });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+// 1. BOTÓN 📁: Exportar Documento Word (.doc) y Script de Carpetas (.bat)
+function exportProjectFoldersAndFiles() {
+    var items = collectNarrativeCardsData();
+    if (items.length === 0) {
+        alert("⚠️ No hay requerimientos capturados para exportar.");
+        return;
+    }
+
+    var dateStr = new Date().toISOString().slice(0, 10);
+
+    // --- A) Generación de Documento Word (.doc compatible con MS Word) ---
+    var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+        'xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+        '<head><meta charset="utf-8"><title>Especificación SRS</title>' +
+        '<style>body{font-family:Arial,sans-serif;font-size:11pt;color:#222;}' +
+        'h1{color:#005691;border-bottom:2px solid #005691;padding-bottom:6px;}' +
+        'h2{color:#5b21b6;margin-top:20px;}' +
+        'table{width:100%;border-collapse:collapse;margin-bottom:16px;}' +
+        'th,td{border:1px solid #bbb;padding:8px;text-align:left;vertical-align:top;}' +
+        'th{background:#f1f5f9;width:28%;}</style></head><body>';
+
+    docHtml += '<h1>Especificación de Requerimientos de Software (SRS)</h1>';
+    docHtml += '<p><b>Fecha de generación:</b> ' + dateStr + ' | <b>Total de requerimientos:</b> ' + items.length + '</p>';
+
+    // --- B) Generación de Script de Carpetas para Windows (.bat) ---
+    var batLines = [
+        '@echo off',
+        'chcp 65001 > nul',
+        'echo Creando estructura de carpetas del proyecto SRS...',
+        'mkdir "Proyecto_SRS_' + dateStr + '" 2>nul',
+        'cd "Proyecto_SRS_' + dateStr + '"'
+    ];
+
+    for (var i = 0; i < items.length; i++) {
+        var f = items[i];
+        var reqId = (f['nar-id'] || ('REQ-0' + (i + 1))).trim();
+        var reqName = (f['nar-name'] || 'Sin_Nombre').trim();
+        var reqPrio = f['nar-prio'] || 'No especificada';
+        var reqDesc = (f['nar-desc'] || 'No especificada').replace(/\n/g, '<br>');
+        var reqIO = (f['nar-io'] || 'No especificadas').replace(/\n/g, '<br>');
+        var reqAC = (f['nar-ac'] || 'No especificados').replace(/\n/g, '<br>');
+        var reqObjs = (f._checkboxes && f._checkboxes.length > 0) ? f._checkboxes.join(', ') : 'No vinculados';
+
+        docHtml += '<h2>' + reqId + ' - ' + reqName + '</h2>';
+        docHtml += '<table>';
+        docHtml += '<tr><th>ID / Prioridad</th><td>' + reqId + ' | Prioridad: ' + reqPrio + '</td></tr>';
+        docHtml += '<tr><th>Objetivos Comerciales</th><td>' + reqObjs + '</td></tr>';
+        docHtml += '<tr><th>Narrativa Formal</th><td>' + reqDesc + '</td></tr>';
+        docHtml += '<tr><th>Entradas / Reglas / Salidas</th><td>' + reqIO + '</td></tr>';
+        docHtml += '<tr><th>Criterios de Aceptación (QA)</th><td>' + reqAC + '</td></tr>';
+        docHtml += '</table>';
+
+        // Sanitizar nombre de carpeta para Windows
+        var safeFolder = (reqId + '_' + reqName)
+            .replace(/[\\/:*?"<>|]/g, '')
+            .replace(/\s+/g, '_')
+            .substring(0, 50);
+
+        batLines.push('mkdir "' + safeFolder + '" 2>nul');
+        batLines.push('mkdir "' + safeFolder + '\\01_Documentacion" 2>nul');
+        batLines.push('mkdir "' + safeFolder + '\\02_Evidencias_QA" 2>nul');
+    }
+
+    docHtml += '</body></html>';
+    batLines.push('echo Estructura creada exitosamente.');
+    batLines.push('pause');
+
+    // Descargar primero el Word y 600ms después el Script para evitar bloqueos del navegador
+    triggerFileDownload('\ufeff' + docHtml, 'Especificacion_SRS_' + dateStr + '.doc', 'application/msword;charset=utf-8');
+    setTimeout(function() {
+        triggerFileDownload(batLines.join('\r\n'), 'Crear_Carpetas_SRS_' + dateStr + '.bat', 'text/plain;charset=utf-8');
+    }, 600);
+}
+
+// 2. BOTÓN 📤: Guardar Respaldo del Proyecto (JSON)
+function exportNarrativeProjectJSON() {
+    var items = collectNarrativeCardsData();
+    if (items.length === 0) {
+        alert("⚠️ No hay requerimientos en pantalla para respaldar.");
+        return;
+    }
+
+    var payload = {
+        methodology: 'waterfall',
+        savedAt: new Date().toISOString(),
+        narratives: items
+    };
+
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var jsonStr = JSON.stringify(payload, null, 2);
+    triggerFileDownload(jsonStr, 'Respaldo_SRS_' + dateStr + '.json', 'application/json;charset=utf-8');
+}
+
+// 3. BOTÓN 📥: Cargar Proyecto desde Respaldo (JSON)
+function importNarrativeProjectJSON(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var parsed = JSON.parse(e.target.result);
+            var list = Array.isArray(parsed) ? parsed : (parsed.narratives || []);
+
+            if (!list || list.length === 0) {
+                alert("⚠️ El archivo JSON no contiene requerimientos válidos.");
+                return;
+            }
+
+            var container = document.getElementById('narratives-container');
+            if (!container) return;
+
+            // Limpiar área actual antes de restaurar
+            container.innerHTML = '';
+            if (typeof narrativeCount !== 'undefined') narrativeCount = 0;
+
+            for (var i = 0; i < list.length; i++) {
+                if (typeof addNarrativeForm === 'function') {
+                    addNarrativeForm();
+                }
+
+                var cards = container.querySelectorAll('.card');
+                var currentCard = cards[cards.length - 1];
+                if (!currentCard) continue;
+
+                var savedFields = list[i];
+                var inputs = currentCard.querySelectorAll('input, textarea, select');
+
+                for (var j = 0; j < inputs.length; j++) {
+                    var el = inputs[j];
+                    if (!el.id) continue;
+                    var prefix = el.id.replace(/-\d+$/, '');
+
+                    if (el.type === 'checkbox') {
+                        if (savedFields._checkboxes && savedFields._checkboxes.indexOf(el.value || el.id) !== -1) {
+                            el.checked = true;
+                        }
+                    } else if (savedFields[prefix] !== undefined) {
+                        el.value = savedFields[prefix];
+                    }
+                }
+            }
+
+            alert("✅ Proyecto cargado con éxito (" + list.length + " requerimiento(s) restaurado(s)).");
+        } catch (err) {
+            console.error(err);
+            alert("⚠️ Error al leer el archivo JSON. Verifica que sea un respaldo válido.");
+        } finally {
+            // Permitir volver a cargar el mismo archivo si el usuario lo necesita
+            event.target.value = '';
+        }
+    };
+    reader.readAsText(file, 'UTF-8');
+}
