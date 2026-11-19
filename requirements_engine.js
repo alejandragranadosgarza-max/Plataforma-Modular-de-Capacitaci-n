@@ -16,7 +16,7 @@ window.addEventListener('DOMContentLoaded', function() {
             if (window.innerWidth < 1024) {
                 e.preventDefault();
                 alert("🖥️ El Laboratorio requiere un espacio de trabajo amplio. Por favor, accede desde un equipo de escritorio.");
-                if(typeof switchMainTab === 'function') switchMainTab('tab-training', document.querySelector('nav button'));
+                if (typeof switchMainTab === 'function') switchMainTab('tab-training', document.querySelector('nav button'));
             }
         });
     }
@@ -126,7 +126,7 @@ function selectMethodology(type) {
     var setupContainer = document.getElementById('setup-container');
     if (setupContainer) setupContainer.style.display = 'none';
 
-    // AJUSTE DE PROPORCIONES Y ALINEACIÓN (Para que no se baje el panel derecho)
+    // AJUSTE DE PROPORCIONES Y ALINEACIÓN
     if (isManualMode) {
         if (leftPanel) leftPanel.style.display = 'none';
         if (rightPanel) {
@@ -139,16 +139,15 @@ function selectMethodology(type) {
             leftPanel.style.display = 'block';
             leftPanel.style.flex = '1'; 
             leftPanel.style.maxWidth = '50%'; 
-            leftPanel.style.marginTop = '0'; // Forzar alineación superior
+            leftPanel.style.marginTop = '0';
         }
         if (rightPanel) {
             rightPanel.style.display = 'block';
             rightPanel.style.flex = '1'; 
-            rightPanel.style.marginTop = '0'; // Forzar alineación superior
+            rightPanel.style.marginTop = '0';
         }
-        // Clave para que los paneles inicien desde la misma altura
-        var flexContainer = rightPanel.parentElement;
-        if(flexContainer) {
+        var flexContainer = rightPanel ? rightPanel.parentElement : null;
+        if (flexContainer) {
             flexContainer.style.alignItems = 'flex-start';
         }
     }
@@ -161,63 +160,11 @@ function selectMethodology(type) {
             '#doc-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 20px; }' +
             '#doc-content th, #doc-content td { border: 1px solid #ccc; padding: 8px; vertical-align: top; }' +
             '#doc-content img { max-width: 100%; height: auto; }' +
-            '#floating-menu { z-index: 10000; }' + // Para asegurar que el menú siempre esté encima
+            '#floating-menu { z-index: 10000; }' +
             '</style>';
             
         var bannerHTML = '<div style="background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bae6fd; position: sticky; top: 0; z-index: 10; font-size: 0.85rem;">' +
             '<strong style="display: block; margin-bottom: 5px;">💡 Instrucciones de Mapeo:</strong>' +
-            '1. Selecciona cualquier fragmento de texto (sin incluir títulos grandes).<br>' +
-            '2. Aparecerá un menú flotante oscuro.<br>' +
-            '3. Haz clic en el botón deseado para enviar el texto automáticamente al formulario de la derecha.' +
-            '</div>';
-
-        docContent.innerHTML = styleHTML + bannerHTML + extractedDocumentText;
-    }
-
-    // INYECCIÓN DE ESTILOS UX Y BANNER FIJO
-    var docContent = document.getElementById('doc-content');
-    if (docContent) {
-        // Reducimos un poco el texto a 0.85rem y relajamos el control de las tablas
-        var styleHTML = '<style>' +
-            '#doc-content { font-size: 0.85rem; line-height: 1.6; color: #333; }' +
-            '#doc-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 20px; }' +
-            '#doc-content th, #doc-content td { border: 1px solid #ccc; padding: 8px; vertical-align: top; }' +
-            '#doc-content img { max-width: 100%; height: auto; }' +
-            '</style>';
-            
-        var bannerHTML = '<div style="background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bae6fd; position: sticky; top: 0; z-index: 10;">' +
-            '<strong style="display: block; margin-bottom: 5px;">💡 Instrucciones de Mapeo:</strong>' +
-            '1. Selecciona cualquier palabra o fragmento de texto clave.<br>' +
-            '2. Aparecerá un menú flotante oscuro.<br>' +
-            '3. Haz clic en el botón deseado para enviarlo al formulario.' +
-            '</div>';
-
-        docContent.innerHTML = styleHTML + bannerHTML + extractedDocumentText;
-    }
-
-    if (type === 'agile' && typeof initAgileWorkspace === 'function') {
-        initAgileWorkspace();
-    } else if (type === 'waterfall' && typeof initWaterfallWorkspace === 'function') {
-        initWaterfallWorkspace();
-    }
-
-    if (!isManualMode) {
-        enableTextSelectionBinding();
-    }
-
-
-    // INYECCIÓN DE ESTILOS UX, BANNER INSTRUCTIVO Y DOCUMENTO
-    var docContent = document.getElementById('doc-content');
-    if (docContent) {
-        var styleHTML = '<style>' +
-            '#doc-content { font-size: 0.9rem; line-height: 1.5; color: #444; }' +
-            '#doc-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }' +
-            '#doc-content th, #doc-content td { border: 1px solid #ccc; padding: 6px; word-wrap: break-word; overflow-wrap: break-word; }' +
-            '#doc-content img { max-width: 100%; height: auto; }' +
-            '</style>';
-            
-        var bannerHTML = '<div style="background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.85rem; border: 1px solid #bae6fd; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
-            '💡 <b>Instrucciones de Mapeo:</b><br>' +
             '1. Selecciona cualquier fragmento de texto (sin incluir títulos grandes).<br>' +
             '2. Aparecerá un menú flotante oscuro.<br>' +
             '3. Haz clic en el botón deseado para enviar el texto automáticamente al formulario de la derecha.' +
@@ -237,21 +184,36 @@ function selectMethodology(type) {
     }
 }
 
+// ESTILOS COMPARTIDOS PARA LA BARRA COMPACTA DE ÍCONOS Y TOOLTIPS
+function getIconToolbarStyles() {
+    return '<style>' +
+        '.req-toolbar { margin-top: 0; margin-bottom: 16px; display: flex; gap: 8px; background: #fff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; align-items: center; justify-content: flex-start; flex-wrap: nowrap; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }' +
+        '.req-icon-btn { position: relative; display: inline-flex !important; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0 !important; margin: 0 !important; border-radius: 6px; font-size: 1.15rem; line-height: 1; cursor: pointer; transition: transform 0.15s, background-color 0.15s; box-sizing: border-box; }' +
+        '.req-icon-btn:hover { transform: translateY(-1px); }' +
+        '.req-icon-sec { background: #f8f9fa; border: 1px solid #d1d5db; color: #333; }' +
+        '.req-icon-sec:hover { background: #e2e8f0; }' +
+        '.req-icon-load { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }' +
+        '.req-icon-load:hover { background: #ffe69c; }' +
+        '.req-divider { width: 1px; height: 26px; background: #cbd5e1; margin: 0 4px; flex-shrink: 0; }' +
+        '.req-icon-btn::after { content: attr(data-tooltip); position: absolute; top: calc(100% + 7px); left: 0; background: #1f2937; color: #fff; font-size: 0.75rem; font-weight: 600; padding: 5px 9px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s ease; z-index: 9999; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }' +
+        '.req-icon-btn:hover::after { opacity: 1; }' +
+        '</style>';
+}
+
 // 4. GENERADORES DE LABORATORIOS
 function initAgileWorkspace() {
     var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
     
-    var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
-    var html = '<div id="atdd-lab">';
-    // CORRECCIÓN: margin-top cambiado de 60px a 0 para alinear perfectamente con el panel izquierdo. Se agrega position sticky para que no se escondan al hacer scroll.
-    html += '<div style="margin-top: 0; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10;">';
-    html += '<button type="button" class="btn" onclick="addStoryForm()">➕ Agregar Historia</button>';
-    html += '<button type="button" class="btn btn-accent" onclick="validateAllStories()">🔍 Validar INVEST</button>';
-    html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
-    html += '<button type="button" style="' + btnStyle + '" onclick="exportToExcelCSV()">📊 Excel / Jira (CSV)</button>';
-    html += '<button type="button" style="' + btnStyle + '" onclick="exportAtddProjectJSON()">📤 Guardar respaldo (Json)</button>';
-    html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar proyecto <input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
+    var html = getIconToolbarStyles();
+    html += '<div id="atdd-lab">';
+    html += '<div class="req-toolbar">';
+    html += '<button type="button" class="btn req-icon-btn" data-tooltip="Agregar Historia" aria-label="Agregar Historia" onclick="addStoryForm()">➕</button>';
+    html += '<button type="button" class="btn btn-accent req-icon-btn" data-tooltip="Validar INVEST" aria-label="Validar INVEST" onclick="validateAllStories()">🔍</button>';
+    html += '<div class="req-divider"></div>';
+    html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Excel / Jira (CSV)" aria-label="Excel / Jira (CSV)" onclick="exportToExcelCSV()">📊</button>';
+    html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Guardar respaldo (JSON)" aria-label="Guardar respaldo (JSON)" onclick="exportAtddProjectJSON()">📤</button>';
+    html += '<label class="req-icon-btn req-icon-load" data-tooltip="Cargar proyecto (JSON)" aria-label="Cargar proyecto (JSON)">📥<input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
     html += '</div>';
     html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
     html += '<div id="stories-container"></div></div>'; 
@@ -268,16 +230,15 @@ function initWaterfallWorkspace() {
     var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
     
-    var btnStyle = 'background:#f8f9fa; border:1px solid #ddd; padding:8px 15px; border-radius:4px; cursor:pointer; color:#333; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
-    var html = '<div id="narrative-lab">';
-    // CORRECCIÓN: margin-top cambiado de 60px a 0 para alinear perfectamente con el panel izquierdo. Se agrega position sticky para que no se escondan al hacer scroll.
-    html += '<div style="margin-top: 0; margin-bottom: 20px; display: flex; gap: 10px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10;">';
-    html += '<button type="button" class="btn" onclick="addNarrativeForm()">➕ Agregar Requerimiento</button>';
-    html += '<button type="button" class="btn btn-accent" onclick="validateAllNarratives()">🔍 Dictaminar (SRS)</button>';
-    html += '<div style="width: 1px; height: 30px; background: #cbd5e1; margin: 0 5px;"></div>';
-    html += '<button type="button" style="' + btnStyle + '" onclick="exportProjectFoldersAndFiles()">📁 Exportar Script/Docx</button>';
-    html += '<button type="button" style="' + btnStyle + '" onclick="exportNarrativeProjectJSON()">📤 Guardar respaldo (Json)</button>';
-    html += '<label style="' + btnStyle + ' background:#fff3cd; color:#856404; border-color:#ffeeba;">📥 Cargar proyecto <input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
+    var html = getIconToolbarStyles();
+    html += '<div id="narrative-lab">';
+    html += '<div class="req-toolbar">';
+    html += '<button type="button" class="btn req-icon-btn" data-tooltip="Agregar Requerimiento" aria-label="Agregar Requerimiento" onclick="addNarrativeForm()">➕</button>';
+    html += '<button type="button" class="btn btn-accent req-icon-btn" data-tooltip="Dictaminar (SRS)" aria-label="Dictaminar (SRS)" onclick="validateAllNarratives()">🔍</button>';
+    html += '<div class="req-divider"></div>';
+    html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Exportar Script/Docx" aria-label="Exportar Script/Docx" onclick="exportProjectFoldersAndFiles()">📁</button>';
+    html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Guardar respaldo (JSON)" aria-label="Guardar respaldo (JSON)" onclick="exportNarrativeProjectJSON()">📤</button>';
+    html += '<label class="req-icon-btn req-icon-load" data-tooltip="Cargar proyecto (JSON)" aria-label="Cargar proyecto (JSON)">📥<input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
     html += '</div>';
     html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
     html += '<div id="nar-output" style="display:none; margin-bottom:20px; border:1px solid #ccc; padding:15px; border-radius:6px; background:#f9f9f9; max-height:300px; overflow-y:auto;"></div>';
@@ -390,14 +351,10 @@ function escapeQuotes(str) {
 window.scrollToNarrative = function(cardId) {
     var card = document.getElementById(cardId);
     if (card) {
-        // Hace scroll suave ubicando la tarjeta al centro de la pantalla
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Efecto visual: destello amarillo temporal para ubicarlo rápido
         var originalBg = card.style.backgroundColor || '#fff';
         card.style.transition = 'background-color 0.5s ease';
-        card.style.backgroundColor = '#fff3cd'; // Amarillo de advertencia
-        
+        card.style.backgroundColor = '#fff3cd';
         setTimeout(() => {
             card.style.backgroundColor = originalBg;
         }, 1500);
