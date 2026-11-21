@@ -349,7 +349,7 @@ function initWaterfallWorkspace() {
     html += '<button type="button" class="btn req-icon-btn" data-tooltip="Agregar Requerimiento" aria-label="Agregar Requerimiento" onclick="addNarrativeForm()">➕</button>';
     html += '<button type="button" class="btn btn-accent req-icon-btn" data-tooltip="Dictaminar (SRS)" aria-label="Dictaminar (SRS)" onclick="validateAllNarratives()">🔍</button>';
     html += '<div class="req-divider"></div>';
-    html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Exportar Script/Docx" aria-label="Exportar Script/Docx" onclick="exportProjectFoldersAndFiles()">📁</button>';
+    html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Exportar Word (.doc)" aria-label="Exportar Word (.doc)" onclick="exportProjectFoldersAndFiles()">📄</button>';
     html += '<button type="button" class="req-icon-btn req-icon-sec" data-tooltip="Guardar respaldo (JSON)" aria-label="Guardar respaldo (JSON)" onclick="exportNarrativeProjectJSON()">📤</button>';
     html += '<label class="req-icon-btn req-icon-load" data-tooltip="Cargar proyecto (JSON)" aria-label="Cargar proyecto (JSON)">📥<input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
     html += '</div>';
