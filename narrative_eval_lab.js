@@ -327,6 +327,7 @@ function triggerFileDownload(content, filename, mimeType) {
 }
 
 // 1. BOTÓN 📁: Exportar Documento Word (.doc) y Script de Carpetas (.bat)
+// 1. BOTÓN 📄: Exportar Documento Word (.doc)
 function exportProjectFoldersAndFiles() {
     var items = collectNarrativeCardsData();
     if (items.length === 0) {
@@ -348,14 +349,6 @@ function exportProjectFoldersAndFiles() {
 
     docHtml += '<h1>Especificación de Requerimientos de Software (SRS)</h1>';
     docHtml += '<p><b>Fecha de generación:</b> ' + dateStr + ' | <b>Total de requerimientos:</b> ' + items.length + '</p>';
-
-    var batLines = [
-        '@echo off',
-        'chcp 65001 > nul',
-        'echo Creando estructura de carpetas del proyecto SRS...',
-        'mkdir "Proyecto_SRS_' + dateStr + '" 2>nul',
-        'cd "Proyecto_SRS_' + dateStr + '"'
-    ];
 
     for (var i = 0; i < items.length; i++) {
         var f = items[i];
@@ -385,25 +378,11 @@ function exportProjectFoldersAndFiles() {
         docHtml += '<tr><th>Salidas</th><td>' + reqOutputs + '</td></tr>';
         docHtml += '<tr><th>Criterios de aceptación</th><td>' + reqAC + '</td></tr>';
         docHtml += '</table>';
-
-        var safeFolder = (reqId + '_' + reqName)
-            .replace(/[\\/:*?"<>|]/g, '')
-            .replace(/\s+/g, '_')
-            .substring(0, 50);
-
-        batLines.push('mkdir "' + safeFolder + '" 2>nul');
-        batLines.push('mkdir "' + safeFolder + '\\01_Documentacion" 2>nul');
-        batLines.push('mkdir "' + safeFolder + '\\02_Evidencias_QA" 2>nul');
     }
 
     docHtml += '</body></html>';
-    batLines.push('echo Estructura creada exitosamente.');
-    batLines.push('pause');
 
     triggerFileDownload('\ufeff' + docHtml, 'Especificacion_SRS_' + dateStr + '.doc', 'application/msword;charset=utf-8');
-    setTimeout(function() {
-        triggerFileDownload(batLines.join('\r\n'), 'Crear_Carpetas_SRS_' + dateStr + '.bat', 'text/plain;charset=utf-8');
-    }, 600);
 }
 
 // 2. BOTÓN 📤: Guardar Respaldo del Proyecto (JSON)
