@@ -293,11 +293,16 @@ function enableTextSelectionBinding() {
                 menuHtml += '<button onclick="sendTextToField(\'st-name\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Nombre</button>';
                 menuHtml += '<button onclick="sendTextToField(\'st-desc\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Narrativa</button>';
                 menuHtml += '<button onclick="sendTextToField(\'st-criteria\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+' border:none;">➡️ Criterios</button>';
-            } else {
-                menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Nombre</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Narrativa</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-io\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Entradas/Salidas</button>';
-                menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+' border:none;">➡️ Criterios QA</button>';
+         } else {
+                menuHtml += '<button onclick="sendTextToField(\'nar-context\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Situación actual</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-name\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Nombre del req.</button>';
+                if (document.getElementById('nar-obj-manual-' + lastInteractedFormIndex)) {
+                    menuHtml += '<button onclick="sendTextToField(\'nar-obj-manual\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Objetivos Comerciales</button>';
+                }
+                menuHtml += '<button onclick="sendTextToField(\'nar-desc\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Requisito inicial</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-inputs\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Entradas</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-outputs\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+'">➡️ Salidas</button>';
+                menuHtml += '<button onclick="sendTextToField(\'nar-ac\', \'' + escapeQuotes(selectedText) + '\')" style="'+btnSt+' border:none;">➡️ Criterios de aceptación</button>';
             }
             floatMenu.innerHTML = menuHtml;
             floatMenu.style.display = 'flex';
