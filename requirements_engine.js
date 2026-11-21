@@ -23,6 +23,90 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 // 2. LECTURA DE ARCHIVOS (PASO 1)
+function escapeHtmlForViewer(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function formatJsonKeyLabel(key) {
+    return key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/[_-]+/g, ' ')
+        .replace(/^./, function(c) { return c.toUpperCase(); })
+        .trim();
+}
+
+function renderJsonAsPrettyHTML(data) {
+    var html = '';
+
+    if (data.project || data.projectName) {
+        html += '<h3 style="color:#005691; margin-top:0; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">📌 ' +
+            escapeHtmlForViewer(data.project || data.projectName) + '</h3>';
+    }
+
+    if (Array.isArray(data.objectivesCatalog) && data.objectivesCatalog.length > 0) {
+        html += '<h4 style="color:#5b21b6; margin:14px 0 8px 0;">🎯 Catálogo de Objetivos Comerciales</h4>';
+        html += '<table><thead><tr style="background:#f3f0ff;"><th style="width:22%;">ID</th><th>Descripción</th></tr></thead><tbody>';
+        data.objectivesCatalog.forEach(function(obj) {
+            var id = obj.id || obj.clave || '';
+            var desc = obj.desc || obj.description || obj.descripcion || '';
+            html += '<tr><td><b>' + escapeHtmlForViewer(id) + '</b></td><td>' + escapeHtmlForViewer(desc) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+    }
+
+    Object.keys(data).forEach(function(key) {
+        if (key === 'project' || key === 'projectName' || key === 'objectivesCatalog') return;
+        var val = data[key];
+        if (val === null || val === undefined || val === '') return;
+
+        html += '<h4 style="color:#005691; margin:14px 0 6px 0;">' + escapeHtmlForViewer(formatJsonKeyLabel(key)) + '</h4>';
+
+        if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+            html += '<p style="margin:0 0 10px 0;">' + escapeHtmlForViewer(val).replace(/\n/g, '<br>') + '</p>';
+        } else if (Array.isArray(val)) {
+            if (val.length === 0) return;
+            if (typeof val[0] === 'object' && val[0] !== null) {
+                var cols = Object.keys(val[0]);
+                html += '<table><thead><tr style="background:#f8fafc;">';
+                cols.forEach(function(c) {
+                    html += '<th>' + escapeHtmlForViewer(formatJsonKeyLabel(c)) + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+                val.forEach(function(item) {
+                    html += '<tr>';
+                    cols.forEach(function(c) {
+                        var cell = item[c];
+                        var cellText = (typeof cell === 'object' && cell !== null) ? JSON.stringify(cell) : cell;
+                        html += '<td>' + escapeHtmlForViewer(cellText || '') + '</td>';
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+            } else {
+                html += '<ul style="margin:0 0 12px 0; padding-left:20px;">';
+                val.forEach(function(item) {
+                    html += '<li>' + escapeHtmlForViewer(item) + '</li>';
+                });
+                html += '</ul>';
+            }
+        } else if (typeof val === 'object') {
+            html += '<ul style="margin:0 0 12px 0; padding-left:20px;">';
+            Object.keys(val).forEach(function(subKey) {
+                var subVal = val[subKey];
+                var subText = (typeof subVal === 'object' && subVal !== null) ? JSON.stringify(subVal) : subVal;
+                html += '<li><b>' + escapeHtmlForViewer(formatJsonKeyLabel(subKey)) + ':</b> ' + escapeHtmlForViewer(subText) + '</li>';
+            });
+            html += '</ul>';
+        }
+    });
+
+    return html || '<p><i>El archivo JSON no contiene secciones legibles.</i></p>';
+}
+
 function handleContextUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -47,16 +131,45 @@ function handleContextUpload(event) {
                 });
         };
         reader.readAsArrayBuffer(file);
-    } 
-    else if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
+    }
+    else if (fileName.endsWith('.json')) {
+        var jsonReader = new FileReader();
+        jsonReader.onload = function(e) {
+            try {
+                var parsed = JSON.parse(e.target.result);
+                window.loadedBusinessObjectives = [];
+
+                if (Array.isArray(parsed.objectivesCatalog)) {
+                    parsed.objectivesCatalog.forEach(function(obj) {
+                        var id = (obj.id || obj.clave || '').toString().trim();
+                        var desc = (obj.desc || obj.description || obj.descripcion || '').toString().trim();
+                        if (id) {
+                            window.loadedBusinessObjectives.push({ id: id, description: desc });
+                        }
+                    });
+                }
+
+                extractedDocumentText = renderJsonAsPrettyHTML(parsed);
+                alert("✅ Archivo JSON procesado (" + window.loadedBusinessObjectives.length + " objetivos detectados). Elige la metodología para iniciar.");
+                enableMethodologySelection();
+            } catch (err) {
+                console.error(err);
+                extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeHtmlForViewer(e.target.result) + "</pre>";
+                alert("⚠️ El JSON no pudo formatearse automáticamente, se cargó como texto plano.");
+                enableMethodologySelection();
+            }
+        };
+        jsonReader.readAsText(file, 'UTF-8');
+    }
+    else if (fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
         var txtReader = new FileReader();
         txtReader.onload = function(e) {
-            extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeQuotes(e.target.result) + "</pre>";
+            extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeHtmlForViewer(e.target.result) + "</pre>";
             parseBusinessObjectivesFromHTML(extractedDocumentText);
             alert("✅ Archivo de texto procesado. Elige la metodología para iniciar.");
             enableMethodologySelection();
         };
-        txtReader.readAsText(file);
+        txtReader.readAsText(file, 'UTF-8');
     } else {
         alert("⚠️ Por favor, sube un archivo válido (.docx, .txt, .json, .csv).");
     }
