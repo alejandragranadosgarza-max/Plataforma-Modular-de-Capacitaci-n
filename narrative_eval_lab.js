@@ -96,6 +96,9 @@ function removeNarrativeCard(cardId) {
 // -----------------------------------------------------
 // MOTOR DE DICTAMEN (VALIDACIÓN SRS)
 // -----------------------------------------------------
+// -----------------------------------------------------
+// MOTOR DE DICTAMEN (VALIDACIÓN SRS) CON RESALTADO DE PALABRAS
+// -----------------------------------------------------
 function validateAllNarratives() {
     var out = document.getElementById('nar-output');
     if (!out) return;
@@ -134,7 +137,7 @@ function validateAllNarratives() {
         card.style.background = '#fff';
 
         // 1. Validar Situación actual (Contexto)
-        var ctxErr = checkFieldCompleteness(context, "Situación actual (Contexto)", ambiguousWords, 3);
+        var ctxErr = checkFieldCompleteness(context, "Situación actual (Contexto)", ambiguousWords, 3, 'nar-context-' + i);
         if (ctxErr) errors.push(ctxErr);
 
         // 2. Validar Nombre del requerimiento
@@ -162,19 +165,19 @@ function validateAllNarratives() {
         }
 
         // 4. Validar Requisito inicial
-        var descErr = checkFieldCompleteness(desc, "Requisito inicial", ambiguousWords, 3);
+        var descErr = checkFieldCompleteness(desc, "Requisito inicial", ambiguousWords, 3, 'nar-desc-' + i);
         if (descErr) errors.push(descErr);
 
         // 5. Validar Entradas
-        var inErr = checkFieldCompleteness(inputsVal, "Entradas", ambiguousWords, 3);
+        var inErr = checkFieldCompleteness(inputsVal, "Entradas", ambiguousWords, 3, 'nar-inputs-' + i);
         if (inErr) errors.push(inErr);
 
         // 6. Validar Salidas
-        var outErr = checkFieldCompleteness(outputsVal, "Salidas", ambiguousWords, 3);
+        var outErr = checkFieldCompleteness(outputsVal, "Salidas", ambiguousWords, 3, 'nar-outputs-' + i);
         if (outErr) errors.push(outErr);
 
         // 7. Validar Criterios de aceptación
-        var acErr = checkFieldCompleteness(ac, "Criterios de aceptación", ambiguousWords, 3);
+        var acErr = checkFieldCompleteness(ac, "Criterios de aceptación", ambiguousWords, 3, 'nar-ac-' + i);
         if (acErr) errors.push(acErr);
 
         if (errors.length > 0) {
@@ -183,7 +186,7 @@ function validateAllNarratives() {
             card.style.background = '#fff5f5';
             reportHtml += '<li style="margin-bottom:8px; cursor:pointer;" onclick="window.scrollToNarrative(\'' + card.id + '\')"><strong style="color:#dc3545;">' + reqId + ' (' + (name ? name : 'Sin título') + ') - RECHAZADO (Clic para ir):</strong><ul style="color:#555; font-size:0.9rem;">';
             for (var e = 0; e < errors.length; e++) {
-                reportHtml += '<li>' + errors[e] + '</li>';
+                reportHtml += '<li style="margin-bottom:4px;">' + errors[e] + '</li>';
             }
             reportHtml += '</ul></li>';
         } else {
@@ -202,23 +205,70 @@ function validateAllNarratives() {
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function checkFieldCompleteness(text, fieldName, ambiguousWords, minWords) {
+function escapeHtmlReport(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function checkFieldCompleteness(text, fieldName, ambiguousWords, minWords, fieldId) {
     if (!text || text.trim() === "") return "El campo '" + fieldName + "' está vacío.";
     var words = text.trim().split(/\s+/);
     if (words.length < minWords) return "El campo '" + fieldName + "' es muy corto (Mín. " + minWords + " palabras necesarias).";
 
-    var lowerText = text.toLowerCase();
-    var foundAmbiguities = [];
+    var foundSnippets = [];
+
     for (var i = 0; i < ambiguousWords.length; i++) {
-        if (lowerText.includes(ambiguousWords[i])) {
-            foundAmbiguities.push('"' + ambiguousWords[i] + '"');
+        var escapedWord = ambiguousWords[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Detecta inicio de palabra (evita falsos positivos como "inadecuado") e incluye plurales/variantes
+        var regex = new RegExp('(^|[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ])(' + escapedWord + '[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]*)', 'gi');
+        var match;
+
+        while ((match = regex.exec(text)) !== null) {
+            var startIdx = match.index + match[1].length;
+            var matchedWord = match[2];
+            var endIdx = startIdx + matchedWord.length;
+
+            var snippetStart = Math.max(0, startIdx - 18);
+            var snippetEnd = Math.min(text.length, endIdx + 18);
+            var before = (snippetStart > 0 ? '…' : '') + escapeHtmlReport(text.substring(snippetStart, startIdx));
+            var after = escapeHtmlReport(text.substring(endIdx, snippetEnd)) + (snippetEnd < text.length ? '…' : '');
+
+            var chip = '<span onclick="event.stopPropagation(); window.highlightWordInField(\'' + fieldId + '\', ' + startIdx + ', ' + endIdx + ')" ' +
+                'title="Clic para seleccionar esta palabra en el campo" ' +
+                'style="display:inline-block; background:#fff; border:1px solid #f5c2c7; border-radius:4px; padding:1px 6px; margin:2px 4px 2px 0; cursor:pointer; font-size:0.85rem;">' +
+                before + '<mark style="background:#ffe066; color:#000; font-weight:bold; padding:0 2px; border-radius:2px;">' + escapeHtmlReport(matchedWord) + '</mark>' + after +
+                '</span>';
+
+            foundSnippets.push(chip);
         }
     }
-    if (foundAmbiguities.length > 0) {
-        return "El campo '" + fieldName + "' contiene lenguaje ambiguo: " + foundAmbiguities.join(", ") + ". Debes ser específico y cuantificable.";
+
+    if (foundSnippets.length > 0) {
+        return "El campo <b>'" + fieldName + "'</b> contiene lenguaje ambiguo (haz clic en la palabra para ir directo a ella):<div style='margin-top:4px;'>" + foundSnippets.join(' ') + "</div>";
     }
     return null;
 }
+
+window.highlightWordInField = function(fieldId, startIdx, endIdx) {
+    var field = document.getElementById(fieldId);
+    if (!field) return;
+
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(function() {
+        field.focus();
+        if (typeof field.setSelectionRange === 'function') {
+            field.setSelectionRange(startIdx, endIdx);
+        }
+        var originalBg = field.style.backgroundColor || '';
+        field.style.transition = 'background-color 0.4s';
+        field.style.backgroundColor = '#fff3cd';
+        setTimeout(function() {
+            field.style.backgroundColor = originalBg;
+        }, 1200);
+    }, 350);
+};
 
 function scrollToCard(cardId) {
     var card = document.getElementById(cardId);
