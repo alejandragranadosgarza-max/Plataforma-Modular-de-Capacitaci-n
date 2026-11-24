@@ -7,15 +7,58 @@ window.addEventListener('DOMContentLoaded', (event) => {
     }
 });
 
+// Utilidades de Nombre del Proyecto y Fecha Local
+function getValidatedAtddProjectName() {
+    var inputEl = document.getElementById('atdd-project');
+    var projectName = inputEl ? inputEl.value.trim() : '';
+
+    if (!projectName) {
+        alert("⚠️ Falta el Nombre del Proyecto. Por favor, captúralo antes de continuar.");
+        if (inputEl) {
+            inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            inputEl.focus();
+            var originalBorder = inputEl.style.borderColor;
+            inputEl.style.borderColor = '#dc3545';
+            setTimeout(function() {
+                inputEl.style.borderColor = originalBorder || '#cbd5e1';
+            }, 1800);
+        }
+        return null;
+    }
+    return projectName;
+}
+
+function sanitizeAtddFileName(name) {
+    var clean = String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')     // Quita acentos
+        .replace(/[_-]?\d{4}-\d{2}-\d{2}$/, '') // Quita fecha previa al final para no duplicarla
+        .replace(/[\\/:*?"<>|]/g, '')        // Quita caracteres prohibidos en Windows
+        .replace(/\s+/g, '_')                // Espacios -> guion bajo
+        .replace(/_+/g, '_')                 // Evita guiones repetidos
+        .replace(/^_|_$/g, '');
+    return clean || 'Proyecto_ATDD';
+}
+
+function getAtddLocalDateStr() {
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+}
+
 function addStoryForm(epicVal = '', nameVal = '', featureVal = '', posVal = '', negVal = '', nfVal = '') {
     storyCounter++;
     var container = document.getElementById('stories-container');
+    if (!container) return;
+
     var storyId = 'story-card-' + storyCounter;
 
     var cardDiv = document.createElement('div');
     cardDiv.className = 'card story-set';
     cardDiv.id = storyId;
-    cardDiv.style.borderLeft = '5px solid #d92027';
+    cardDiv.style.borderLeft = '5px solid #28a745';
     cardDiv.style.background = '#fdfefe';
 
     cardDiv.innerHTML = `
@@ -28,26 +71,31 @@ function addStoryForm(epicVal = '', nameVal = '', featureVal = '', posVal = '', 
         </div>
         <div class="story-body">
             <label>Épica:</label>
-            <input type="text" class="hu-epic" placeholder="Ej. Módulo de Pagos y Carrito" value="${escapeHTML(epicVal)}">
+            <input type="text" id="st-epic-${storyCounter}" class="hu-epic" placeholder="Ej. Módulo de Pagos y Carrito" value="${escapeHTML(epicVal)}">
 
             <label>Nombre de la Historia de Usuario:</label>
-            <input type="text" class="hu-name" placeholder="Ej. Aplicar Código de Descuento" value="${escapeHTML(nameVal)}">
+            <input type="text" id="st-name-${storyCounter}" class="hu-name" placeholder="Ej. Aplicar Código de Descuento" value="${escapeHTML(nameVal)}">
 
             <label>Historia de Usuario (Formato INVEST / 3 C):</label>
-            <textarea class="hu-feature" rows="3" placeholder="Ej. Como usuario comprador, quiero aplicar un código de descuento..., para obtener una rebaja...">${escapeHTML(featureVal)}</textarea>
+            <textarea id="st-desc-${storyCounter}" class="hu-feature" rows="3" placeholder="Ej. Como usuario comprador, quiero aplicar un código de descuento..., para obtener una rebaja...">${escapeHTML(featureVal)}</textarea>
 
             <label>Criterios de Aceptación - Caso POSITIVO (Ordenado):</label>
-            <textarea class="hu-pos" rows="2" placeholder="Ej. Dado que tengo un carrito..., cuando ..., entonces ...">${escapeHTML(posVal)}</textarea>
+            <textarea id="st-criteria-${storyCounter}" class="hu-pos" rows="2" placeholder="Ej. Dado que tengo un carrito..., cuando ..., entonces ...">${escapeHTML(posVal)}</textarea>
 
             <label>Criterios de Aceptación - Caso NEGATIVO (Ordenado):</label>
-            <textarea class="hu-neg" rows="2" placeholder="Ej. Dado que tengo un carrito..., cuando ..., entonces ...">${escapeHTML(negVal)}</textarea>
+            <textarea id="st-neg-${storyCounter}" class="hu-neg" rows="2" placeholder="Ej. Dado que tengo un carrito..., cuando ..., entonces ...">${escapeHTML(negVal)}</textarea>
 
             <label>Criterios de Aceptación - Requisito NO FUNCIONAL (Ordenado):</label>
-            <textarea class="hu-nf" rows="2" placeholder="Ej. El tiempo de respuesta no debe superar los 500ms...">${escapeHTML(nfVal)}</textarea>
+            <textarea id="st-nf-${storyCounter}" class="hu-nf" rows="2" placeholder="Ej. El tiempo de respuesta no debe superar los 500ms...">${escapeHTML(nfVal)}</textarea>
         </div>
     `;
 
     container.appendChild(cardDiv);
+
+    // Apuntar el menú flotante automáticamente a la historia recién creada
+    if (typeof window.lastInteractedFormIndex !== 'undefined') {
+        window.lastInteractedFormIndex = storyCounter;
+    }
 }
 
 function toggleStoryForm(storyId, btn) {
@@ -65,20 +113,20 @@ function toggleStoryForm(storyId, btn) {
 function removeStoryForm(storyId) {
     var card = document.getElementById(storyId);
     if (card) {
-        card.remove();
+        if (confirm("¿Seguro que deseas eliminar esta historia de usuario?")) {
+            card.remove();
+        }
     }
 }
 
 // VALIDACIÓN EXPERTA INVEST / 3C POR HISTORIA
 function validateAllStories() {
-    var project = document.getElementById('atdd-project').value.trim();
+    var project = getValidatedAtddProjectName();
+    if (!project) return;
+
     var cards = document.querySelectorAll('.story-set');
     var outBox = document.getElementById('atdd-output');
 
-    if (!project) {
-        alert("Por favor ingresa el Nombre del Proyecto Global.");
-        return;
-    }
     if (cards.length === 0) {
         alert("Debes agregar al menos una Historia de Usuario para validar.");
         return;
@@ -117,52 +165,53 @@ function validateAllStories() {
         }
 
         if (specificErrors.length > 0) {
-            var storyId = card.id; // Captura el ID exacto de la historia
+            var storyId = card.id;
             validationLog += `<div onclick="window.scrollToStory('${storyId}')" title="Clic para ir a esta historia" style="margin-bottom: 10px; color: #721c24; background: #f8d7da; padding: 10px; border-radius: 6px; border-left: 5px solid #dc3545; cursor: pointer; transition: transform 0.2s;">
-                <strong>❌ Historia #${num} (${huName || 'Sin Nombre'}): NO CUMPLE</strong>
+                <strong>❌ Historia #${num} (${escapeHTML(huName) || 'Sin Nombre'}): NO CUMPLE</strong>
                 <ul style="margin: 5px 0 0 20px; padding: 0;">` + specificErrors.map(e => `<li>${e}</li>`).join('') + `</ul>
                 <small style="display:block; margin-top:8px; color:#a71d2a; font-weight:bold;">🖱️ Haz clic aquí para ir a la historia y corregirla.</small>
             </div>`;
         } else {
             validationLog += `<div style="margin-bottom: 10px; color: #155724; background: #d4edda; padding: 10px; border-radius: 6px; border-left: 5px solid #28a745;">
-                <strong>✅ Historia #${num} (${huName}): CUMPLE LAS REGLAS</strong><br><small>Alineada con el estándar INVEST, 3C y criterios comprobables.</small>
+                <strong>✅ Historia #${num} (${escapeHTML(huName)}): CUMPLE LAS REGLAS</strong><br><small>Alineada con el estándar INVEST, 3C y criterios comprobables.</small>
             </div>`;
         }
     });
 
-    outBox.style.display = 'block';
-    outBox.innerHTML = `
-        <h4 style="color:#005691; margin-top:0;">🔍 Reporte de Diagnóstico INVEST y Criterios por Historia</h4>
-        <p><strong>Proyecto:</strong> ${escapeHTML(project)} | <strong>Total Evaluadas:</strong> ${cards.length}</p>
-        <hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
-        ${validationLog}
-    `;
+    if (outBox) {
+        outBox.style.display = 'block';
+        outBox.innerHTML = `
+            <h4 style="color:#005691; margin-top:0;">🔍 Reporte de Diagnóstico INVEST y Criterios por Historia</h4>
+            <p><strong>Proyecto:</strong> ${escapeHTML(project)} | <strong>Total Evaluadas:</strong> ${cards.length}</p>
+            <hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
+            ${validationLog}
+        `;
+        outBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // EXPORTAR CSV UNIVERSAL (COMPATIBLE CON EXCEL Y ASISTENTE DE IMPORTACIÓN MASIVA DE JIRA)
 function exportToExcelCSV() {
-    var projectInput = document.getElementById('atdd-project').value.trim();
+    var projectInput = getValidatedAtddProjectName();
+    if (!projectInput) return;
+
     var cards = document.querySelectorAll('.story-set');
-
-    if (!projectInput) {
-        alert("Por favor ingresa el Nombre del Proyecto Global para exportar.");
-        return;
-    }
     if (cards.length === 0) {
-        alert("No hay historias de usuario para exportar.");
+        alert("⚠️ No hay historias de usuario para exportar.");
         return;
     }
 
-    var sheetName = projectInput.replace(/[\/\\\?\*:\[\]]/g, "_").substring(0, 31);
+    var safeProj = sanitizeAtddFileName(projectInput);
+    var dateStr = getAtddLocalDateStr();
     var csvRows = [];
 
     // Cabeceras oficiales reconocidas por el Asistente de Importación de Jira (External System Import)
     csvRows.push([
-        "Summary",                  
-        "Issue Type",               
-        "Epic Name",                
-        "Description",              
-        "Environment"               
+        "Summary",
+        "Issue Type",
+        "Epic Name",
+        "Description",
+        "Environment"
     ]);
 
     cards.forEach((card) => {
@@ -191,25 +240,29 @@ function exportToExcelCSV() {
 
     var csvContent = csvRows.map(e => e.join(";")).join("\n");
     var blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    var url = window.URL.createObjectURL(blob);
     var link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.download = `${sheetName}_Jira_Excel_Universal.csv`;
+    link.href = url;
+    link.download = `${safeProj}_${dateStr}.csv`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 1000);
 }
 
 // EXPORTAR PARA JIRA (Formato de texto plano estructurado)
 function exportToJiraTXT() {
-    var project = document.getElementById('atdd-project').value.trim();
-    var cards = document.querySelectorAll('.story-set');
+    var project = getValidatedAtddProjectName();
+    if (!project) return;
 
-    if (!project) {
-        alert("Por favor ingresa el Nombre del Proyecto Global para exportar.");
-        return;
-    }
+    var cards = document.querySelectorAll('.story-set');
     if (cards.length === 0) {
-        alert("No hay historias de usuario para exportar.");
+        alert("⚠️ No hay historias de usuario para exportar.");
         return;
     }
+
+    var safeProj = sanitizeAtddFileName(project);
+    var dateStr = getAtddLocalDateStr();
 
     var exportText = `PROYECTO: ${project}\n`;
     exportText += `====================================================\n\n`;
@@ -234,13 +287,17 @@ function exportToJiraTXT() {
     });
 
     var blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+    var url = window.URL.createObjectURL(blob);
     var link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.download = `${project.replace(/[^a-zA-Z0-9]/g, '_')}_Jira_Format.txt`;
+    link.href = url;
+    link.download = `${safeProj}_${dateStr}.txt`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 1000);
 }
 
-// IMPORTAR / CARGAR ARCHIVO
+// IMPORTAR / CARGAR ARCHIVO TXT
 function handleFileImport(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -248,7 +305,6 @@ function handleFileImport(event) {
     var reader = new FileReader();
     reader.onload = function(e) {
         var content = e.target.result;
-        
         document.getElementById('stories-container').innerHTML = "";
         storyCounter = 0;
 
@@ -273,7 +329,8 @@ function parseImportedText(text) {
         var trimmed = line.trim();
         if (trimmed.startsWith("PROYECTO:")) {
             var currentProject = trimmed.replace("PROYECTO:", "").trim();
-            document.getElementById('atdd-project').value = currentProject;
+            var projEl = document.getElementById('atdd-project');
+            if (projEl) projEl.value = currentProject;
         } else if (trimmed.startsWith("ÉPICA:")) {
             currentEpic = trimmed.replace("ÉPICA:", "").trim();
         } else if (trimmed.startsWith("NOMBRE:")) {
@@ -319,7 +376,7 @@ function parseImportedText(text) {
 
 function escapeXML(str) {
     if (!str) return '';
-    return str.toString().replace(/[&<>'"']/g, function (match) {
+    return str.toString().replace(/[&<>'"]/g, function (match) {
         return {
             '&': '&amp;',
             '<': '&lt;',
@@ -332,7 +389,7 @@ function escapeXML(str) {
 
 function escapeHTML(str) {
     if (!str) return '';
-    return str.replace(/[&<>'"]/g, function(t) {
+    return String(str).replace(/[&<>'"]/g, function(t) {
         return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t;
     });
 }
@@ -343,47 +400,42 @@ window.scrollToStory = function(cardId) {
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         var originalBg = card.style.backgroundColor || '#fdfefe';
         card.style.transition = 'background-color 0.5s ease';
-        card.style.backgroundColor = '#fff3cd'; // Destello amarillo
+        card.style.backgroundColor = '#fff3cd';
         setTimeout(() => {
             card.style.backgroundColor = originalBg;
         }, 1500);
     }
+};
+
 // ==========================================
 // EXPORTAR E IMPORTAR PROYECTO ATDD (JSON)
 // ==========================================
 
 function exportAtddProjectJSON() {
-    // Si no existe un campo de proyecto global en ATDD, asignamos un nombre genérico
-    var projectName = "Proyecto_ATDD";
-    var cards = document.querySelectorAll('.story-set');
+    var projectName = getValidatedAtddProjectName();
+    if (!projectName) return;
 
+    var cards = document.querySelectorAll('.story-set');
     if (cards.length === 0) {
-        alert("⚠️ No hay historias de usuario para exportar.");
+        alert("⚠️ No hay historias de usuario para respaldar.");
         return;
     }
 
     var projectData = {
+        project: projectName,
         projectName: projectName,
-        exportDate: new Date().toISOString(),
+        methodology: 'agile',
+        savedAt: new Date().toISOString(),
         stories: []
     };
 
     cards.forEach(function(card) {
-        var idSuffix = card.id.split('-').pop();
-        
-        // Se buscan las clases estándar de ATDD para recolectar los datos
         var epic = card.querySelector('.hu-epic') ? card.querySelector('.hu-epic').value.trim() : "";
         var name = card.querySelector('.hu-name') ? card.querySelector('.hu-name').value.trim() : "";
         var feature = card.querySelector('.hu-feature') ? card.querySelector('.hu-feature').value.trim() : "";
         var pos = card.querySelector('.hu-pos') ? card.querySelector('.hu-pos').value.trim() : "";
         var neg = card.querySelector('.hu-neg') ? card.querySelector('.hu-neg').value.trim() : "";
         var nf = card.querySelector('.hu-nf') ? card.querySelector('.hu-nf').value.trim() : "";
-
-        // Si los campos se llaman de otra forma en tu versión, usamos los IDs generados
-        if (!epic && document.getElementById('st-epic-' + idSuffix)) epic = document.getElementById('st-epic-' + idSuffix).value.trim();
-        if (!name && document.getElementById('st-name-' + idSuffix)) name = document.getElementById('st-name-' + idSuffix).value.trim();
-        if (!feature && document.getElementById('st-desc-' + idSuffix)) feature = document.getElementById('st-desc-' + idSuffix).value.trim();
-        if (!pos && document.getElementById('st-criteria-' + idSuffix)) pos = document.getElementById('st-criteria-' + idSuffix).value.trim();
 
         projectData.stories.push({
             epic: epic,
@@ -395,13 +447,17 @@ function exportAtddProjectJSON() {
         });
     });
 
-    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 4));
-    var downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", projectData.projectName + ".json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    var safeProj = sanitizeAtddFileName(projectName);
+    var dateStr = getAtddLocalDateStr();
+    var blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json;charset=utf-8' });
+    var url = window.URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeProj}_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 1000);
 }
 
 function importAtddProjectJSON(event) {
@@ -412,60 +468,41 @@ function importAtddProjectJSON(event) {
     reader.onload = function(e) {
         try {
             var data = JSON.parse(e.target.result);
-            if (!data.stories || !Array.isArray(data.stories)) throw new Error("Formato inválido.");
+            if (!data.stories || !Array.isArray(data.stories) || data.stories.length === 0) {
+                throw new Error("El archivo no contiene historias de usuario válidas.");
+            }
+
+            // Restaurar el Nombre del Proyecto en la cabecera
+            var projInput = document.getElementById('atdd-project');
+            var importedProject = (data.project || data.projectName || '').toString().trim();
+            if (projInput && importedProject) {
+                projInput.value = importedProject;
+            }
 
             var container = document.getElementById('stories-container');
-            if (container) container.innerHTML = "";
-            
-            if (typeof storyCount !== 'undefined') storyCount = 0; 
+            if (!container) return;
+
+            container.innerHTML = "";
+            storyCounter = 0;
 
             data.stories.forEach(function(story) {
-                // Genera la tarjeta usando tu función existente
-                if(typeof addStoryForm === 'function') {
-                    addStoryForm();
-                } else {
-                    console.error("No se encontró la función addStoryForm()");
-                    return;
-                }
-                
-                var currentId = (typeof storyCount !== 'undefined') ? storyCount : document.querySelectorAll('.story-set').length;
-                
-                // Intenta llenar los campos por ID (como los mapeamos en requirements_engine)
-                var epicEl = document.getElementById('st-epic-' + currentId);
-                var nameEl = document.getElementById('st-name-' + currentId);
-                var descEl = document.getElementById('st-desc-' + currentId);
-                var posEl = document.getElementById('st-criteria-' + currentId); 
-                
-                if(epicEl) epicEl.value = story.epic || "";
-                if(nameEl) nameEl.value = story.name || "";
-                if(descEl) descEl.value = story.feature || "";
-                if(posEl) posEl.value = story.pos || "";
-                
-                // Si la estructura DOM usa las clases hu-epic, hu-name, etc.
-                var lastCard = container.lastElementChild;
-                if(lastCard) {
-                    var inEpic = lastCard.querySelector('.hu-epic');
-                    var inName = lastCard.querySelector('.hu-name');
-                    var inFeat = lastCard.querySelector('.hu-feature');
-                    var inPos = lastCard.querySelector('.hu-pos');
-                    var inNeg = lastCard.querySelector('.hu-neg');
-                    var inNf = lastCard.querySelector('.hu-nf');
-                    
-                    if(inEpic && !inEpic.value) inEpic.value = story.epic || "";
-                    if(inName && !inName.value) inName.value = story.name || "";
-                    if(inFeat && !inFeat.value) inFeat.value = story.feature || "";
-                    if(inPos && !inPos.value) inPos.value = story.pos || "";
-                    if(inNeg && !inNeg.value) inNeg.value = story.neg || "";
-                    if(inNf && !inNf.value) inNf.value = story.nf || "";
-                }
+                addStoryForm(
+                    story.epic || "",
+                    story.name || "",
+                    story.feature || "",
+                    story.pos || "",
+                    story.neg || "",
+                    story.nf || ""
+                );
             });
 
             alert("✅ Proyecto importado exitosamente con " + data.stories.length + " historia(s).");
         } catch (error) {
+            console.error(error);
             alert("⚠️ Error al importar: " + error.message);
+        } finally {
+            event.target.value = "";
         }
-        event.target.value = ""; 
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
 }
-};
