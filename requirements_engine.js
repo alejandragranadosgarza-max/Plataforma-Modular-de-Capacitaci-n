@@ -7,6 +7,7 @@ var extractedDocumentText = "";
 var activeMethodology = "";
 var lastInteractedFormIndex = 1;
 window.loadedBusinessObjectives = [];
+window.loadedProjectName = "";
 
 // 1. CONTROL DE ACCESO
 window.addEventListener('DOMContentLoaded', function() {
@@ -111,7 +112,9 @@ function handleContextUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
 
+    var baseFileName = file.name.replace(/\.[^/.]+$/, '').trim();
     var fileName = file.name.toLowerCase();
+
     if (fileName.endsWith('.docx')) {
         if (typeof mammoth === 'undefined') {
             alert("⚠️ La librería Mammoth.js no está disponible.");
@@ -122,6 +125,7 @@ function handleContextUpload(event) {
             mammoth.convertToHtml({ arrayBuffer: loadEvent.target.result })
                 .then(function(result) {
                     extractedDocumentText = result.value;
+                    window.loadedProjectName = baseFileName;
                     parseBusinessObjectivesFromHTML(extractedDocumentText);
                     alert("✅ Documento procesado. Elige la metodología para iniciar.");
                     enableMethodologySelection();
@@ -138,6 +142,7 @@ function handleContextUpload(event) {
             try {
                 var parsed = JSON.parse(e.target.result);
                 window.loadedBusinessObjectives = [];
+                window.loadedProjectName = (parsed.project || parsed.projectName || baseFileName).toString().trim();
 
                 if (Array.isArray(parsed.objectivesCatalog)) {
                     parsed.objectivesCatalog.forEach(function(obj) {
@@ -154,6 +159,7 @@ function handleContextUpload(event) {
                 enableMethodologySelection();
             } catch (err) {
                 console.error(err);
+                window.loadedProjectName = baseFileName;
                 extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeHtmlForViewer(e.target.result) + "</pre>";
                 alert("⚠️ El JSON no pudo formatearse automáticamente, se cargó como texto plano.");
                 enableMethodologySelection();
@@ -164,6 +170,7 @@ function handleContextUpload(event) {
     else if (fileName.endsWith('.txt') || fileName.endsWith('.csv')) {
         var txtReader = new FileReader();
         txtReader.onload = function(e) {
+            window.loadedProjectName = baseFileName;
             extractedDocumentText = "<pre style='white-space: pre-wrap; font-family: inherit;'>" + escapeHtmlForViewer(e.target.result) + "</pre>";
             parseBusinessObjectivesFromHTML(extractedDocumentText);
             alert("✅ Archivo de texto procesado. Elige la metodología para iniciar.");
@@ -174,7 +181,6 @@ function handleContextUpload(event) {
         alert("⚠️ Por favor, sube un archivo válido (.docx, .txt, .json, .csv).");
     }
 }
-
 function parseBusinessObjectivesFromHTML(htmlContent) {
     window.loadedBusinessObjectives = [];
     var tempDiv = document.createElement('div');
@@ -342,6 +348,8 @@ function initAgileWorkspace() {
 function initWaterfallWorkspace() {
     var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
+
+    var initialProject = (window.loadedProjectName || '').replace(/"/g, '&quot;');
     
     var html = getIconToolbarStyles();
     html += '<div id="narrative-lab">';
@@ -354,6 +362,13 @@ function initWaterfallWorkspace() {
     html += '<label class="req-icon-btn req-icon-load" data-tooltip="Cargar proyecto (JSON)" aria-label="Cargar proyecto (JSON)">📥<input type="file" accept=".json" style="display: none;" onchange="importNarrativeProjectJSON(event)"></label>';
     html += '</div>';
     html += '<h3 style="color: #005691; margin-top: 0;">🏛️ Construcción de Narrativas (SRS)</h3>';
+
+    // Cabecera editable del Nombre del Proyecto
+    html += '<div style="margin-bottom: 16px; background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #cbd5e1; border-left: 4px solid #005691;">';
+    html += '<label for="nar-project" style="display:block; font-weight:bold; font-size:0.9rem; color:#005691; margin-bottom:6px;">📁 Nombre del Proyecto:</label>';
+    html += '<input type="text" id="nar-project" value="' + initialProject + '" placeholder="Ej. Portal de Clientes v2.0..." style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.95rem; box-sizing:border-box;">';
+    html += '</div>';
+
     html += '<div id="nar-output" style="display:none; margin-bottom:20px; border:1px solid #ccc; padding:15px; border-radius:6px; background:#f9f9f9; max-height:300px; overflow-y:auto;"></div>';
     html += '<div id="narratives-container"></div></div>';
     wContainer.innerHTML = html;
