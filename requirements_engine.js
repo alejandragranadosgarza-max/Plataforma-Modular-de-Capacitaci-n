@@ -323,6 +323,8 @@ function getIconToolbarStyles() {
 function initAgileWorkspace() {
     var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
+
+    var initialProject = (window.loadedProjectName || '').replace(/"/g, '&quot;');
     
     var html = getIconToolbarStyles();
     html += '<div id="atdd-lab">';
@@ -335,6 +337,14 @@ function initAgileWorkspace() {
     html += '<label class="req-icon-btn req-icon-load" data-tooltip="Cargar proyecto (JSON)" aria-label="Cargar proyecto (JSON)">📥<input type="file" accept=".json" style="display: none;" onchange="importAtddProjectJSON(event)"></label>';
     html += '</div>';
     html += '<h3 style="color: #28a745; margin-top: 0;">🚀 Construcción de Historias (ATDD)</h3>';
+
+    // Cabecera editable del Nombre del Proyecto
+    html += '<div style="margin-bottom: 16px; background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #cbd5e1; border-left: 4px solid #28a745;">';
+    html += '<label for="atdd-project" style="display:block; font-weight:bold; font-size:0.9rem; color:#28a745; margin-bottom:6px;">📁 Nombre del Proyecto:</label>';
+    html += '<input type="text" id="atdd-project" value="' + initialProject + '" placeholder="Ej. App NutriSense v2.0..." style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.95rem; box-sizing:border-box;">';
+    html += '</div>';
+
+    html += '<div id="atdd-output" style="display:none; margin-bottom:20px; border:1px solid #ccc; padding:15px; border-radius:6px; background:#f9f9f9; max-height:300px; overflow-y:auto;"></div>';
     html += '<div id="stories-container"></div></div>'; 
     wContainer.innerHTML = html;
     
@@ -344,7 +354,6 @@ function initAgileWorkspace() {
         }
     }, 100);
 }
-
 function initWaterfallWorkspace() {
     var wContainer = document.getElementById('workspace-container'); 
     if (!wContainer) return;
