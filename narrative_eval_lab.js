@@ -325,21 +325,63 @@ function triggerFileDownload(content, filename, mimeType) {
     document.body.removeChild(a);
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 }
+// Utilidades para Nombre del Proyecto y Fecha Local
+function getValidatedProjectName() {
+    var inputEl = document.getElementById('nar-project');
+    var projectName = inputEl ? inputEl.value.trim() : '';
 
-// 1. BOTÓN 📁: Exportar Documento Word (.doc) y Script de Carpetas (.bat)
+    if (!projectName) {
+        alert("⚠️ Falta el Nombre del Proyecto. Por favor, captúralo antes de exportar.");
+        if (inputEl) {
+            inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            inputEl.focus();
+            var originalBorder = inputEl.style.borderColor;
+            inputEl.style.borderColor = '#dc3545';
+            setTimeout(function() {
+                inputEl.style.borderColor = originalBorder || '#cbd5e1';
+            }, 1800);
+        }
+        return null;
+    }
+    return projectName;
+}
+
+function sanitizeFileName(name) {
+    var clean = String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Quita acentos
+        .replace(/[\\/:*?"<>|]/g, '')    // Quita caracteres prohibidos en Windows
+        .replace(/\s+/g, '_')            // Espacios -> guion bajo
+        .replace(/_+/g, '_')             // Evita guiones repetidos
+        .replace(/^_|_$/g, '');
+    return clean || 'Proyecto_SRS';
+}
+
+function getLocalDateStr() {
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+}
+
 // 1. BOTÓN 📄: Exportar Documento Word (.doc)
 function exportProjectFoldersAndFiles() {
+    var projectName = getValidatedProjectName();
+    if (!projectName) return;
+
     var items = collectNarrativeCardsData();
     if (items.length === 0) {
         alert("⚠️ No hay requerimientos capturados para exportar.");
         return;
     }
 
-    var dateStr = new Date().toISOString().slice(0, 10);
+    var dateStr = getLocalDateStr();
+    var safeProj = sanitizeFileName(projectName);
 
     var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
         'xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-        '<head><meta charset="utf-8"><title>Especificación SRS</title>' +
+        '<head><meta charset="utf-8"><title>Especificación SRS - ' + escapeHtmlReport(projectName) + '</title>' +
         '<style>body{font-family:Arial,sans-serif;font-size:11pt;color:#222;}' +
         'h1{color:#005691;border-bottom:2px solid #005691;padding-bottom:6px;}' +
         'h2{color:#5b21b6;margin-top:20px;}' +
@@ -348,7 +390,8 @@ function exportProjectFoldersAndFiles() {
         'th{background:#f1f5f9;width:28%;}</style></head><body>';
 
     docHtml += '<h1>Especificación de Requerimientos de Software (SRS)</h1>';
-    docHtml += '<p><b>Fecha de generación:</b> ' + dateStr + ' | <b>Total de requerimientos:</b> ' + items.length + '</p>';
+    docHtml += '<p><b>Proyecto:</b> ' + escapeHtmlReport(projectName) + '<br>';
+    docHtml += '<b>Fecha de generación:</b> ' + dateStr + ' | <b>Total de requerimientos:</b> ' + items.length + '</p>';
 
     for (var i = 0; i < items.length; i++) {
         var f = items[i];
@@ -382,11 +425,14 @@ function exportProjectFoldersAndFiles() {
 
     docHtml += '</body></html>';
 
-    triggerFileDownload('\ufeff' + docHtml, 'Especificacion_SRS_' + dateStr + '.doc', 'application/msword;charset=utf-8');
+    triggerFileDownload('\ufeff' + docHtml, safeProj + '_' + dateStr + '.doc', 'application/msword;charset=utf-8');
 }
 
 // 2. BOTÓN 📤: Guardar Respaldo del Proyecto (JSON)
 function exportNarrativeProjectJSON() {
+    var projectName = getValidatedProjectName();
+    if (!projectName) return;
+
     var items = collectNarrativeCardsData();
     if (items.length === 0) {
         alert("⚠️ No hay requerimientos en pantalla para respaldar.");
@@ -394,14 +440,16 @@ function exportNarrativeProjectJSON() {
     }
 
     var payload = {
+        project: projectName,
         methodology: 'waterfall',
         savedAt: new Date().toISOString(),
         narratives: items
     };
 
-    var dateStr = new Date().toISOString().slice(0, 10);
+    var dateStr = getLocalDateStr();
+    var safeProj = sanitizeFileName(projectName);
     var jsonStr = JSON.stringify(payload, null, 2);
-    triggerFileDownload(jsonStr, 'Respaldo_SRS_' + dateStr + '.json', 'application/json;charset=utf-8');
+    triggerFileDownload(jsonStr, safeProj + '_' + dateStr + '.json', 'application/json;charset=utf-8');
 }
 
 // 3. BOTÓN 📥: Cargar Proyecto desde Respaldo (JSON)
@@ -420,6 +468,13 @@ function importNarrativeProjectJSON(event) {
                 return;
             }
 
+            // Restaurar el Nombre del Proyecto en la cabecera si viene en el respaldo
+            var projInput = document.getElementById('nar-project');
+            var importedProject = (parsed.project || parsed.projectName || '').toString().trim();
+            if (projInput && importedProject) {
+                projInput.value = importedProject;
+            }
+
             var container = document.getElementById('narratives-container');
             if (!container) return;
 
@@ -429,7 +484,6 @@ function importNarrativeProjectJSON(event) {
             for (var i = 0; i < list.length; i++) {
                 addNarrativeForm();
 
-                // La tarjeta recién agregada siempre tiene el ID con el narrativeCount actual
                 var currentCard = document.getElementById('nar-card-' + narrativeCount);
                 if (!currentCard) continue;
 
@@ -450,7 +504,6 @@ function importNarrativeProjectJSON(event) {
                     if (savedFields[prefix] !== undefined) {
                         el.value = savedFields[prefix];
                     } else if (prefix === 'nar-obj-manual' && savedFields._checkboxes && savedFields._checkboxes.length > 0) {
-                        // Respaldo: si se importó sin archivo origen pero el JSON traía checkboxes
                         el.value = savedFields._checkboxes.join(', ');
                     }
                 }
