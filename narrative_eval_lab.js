@@ -353,7 +353,8 @@ function sanitizeFileName(name) {
         .replace(/[\\/:*?"<>|]/g, '')    // Quita caracteres prohibidos en Windows
         .replace(/\s+/g, '_')            // Espacios -> guion bajo
         .replace(/_+/g, '_')             // Evita guiones repetidos
-        .replace(/^_|_$/g, '');
+        .replace(/^_|_$/g, '')
+        .replace(/[_-]?\d{4}-\d{2}-\d{2}$/, ''); // Quita fecha previa al final para no duplicarla
     return clean || 'Proyecto_SRS';
 }
 
